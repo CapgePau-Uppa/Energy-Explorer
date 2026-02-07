@@ -5,7 +5,11 @@
     "sources": {
         "protomaps": {
             "type": "vector",
-            "url": "pmtiles://https://cdn1.julienc.me/20260130.pmtiles"
+            "maxzoom": 15,
+            "tiles": [
+                "https://api.protomaps.com/tiles/v4/{z}/{x}/{y}.mvt?key=7ca2c0f51b58cc9d"
+            ],
+            "attribution": "<a href=\"https://osm.org/copyright\">© OpenStreetMap</a>"
         }
     },
     "sprite": "https://protomaps.github.io/basemaps-assets/sprites/v4/light",

@@ -11,6 +11,8 @@ function Carte({ children }: { children?: React.ReactNode }) {
         "default" | "wind" | "solar"
     >("default");
 
+    const [asideFolded, setAsideFolded] = useState(true);
+
     const [viewState, setViewState] = useState({
         longitude: 0,
         latitude: 46.71,
@@ -21,6 +23,7 @@ function Carte({ children }: { children?: React.ReactNode }) {
     useEffect(() => {
         const protocol = new Protocol();
         maplibregl.addProtocol("pmtiles", protocol.tile);
+        
 
         // Cleanup when component unmounts
         return () => {
@@ -50,7 +53,7 @@ function Carte({ children }: { children?: React.ReactNode }) {
             <MapLibre
                 attributionControl={{
                     customAttribution:
-                        " © OpenStreetMap contributeurs | Energy Explorer",
+                        " © Contributeurs d'OpenStreetMap  | Energy Explorer",
                     compact: true,
                 }}
                 ref={mapRef}
@@ -84,13 +87,52 @@ function Carte({ children }: { children?: React.ReactNode }) {
                 {children}
             </MapLibre>
 
-            <aside className="absolute top-6 left-6 bg-white/60 p-8 rounded-lg backdrop-blur-xs h-[95vh] w-sm">
-                <img
-                    src="/image/energy-explorer.svg"
-                    alt="Energy Explorer Logo"
-                    className="mb-2 w-32"
-                />
-                <p className="text-xs text-black/50">
+            <aside
+                className={clsx(
+                    "transition-all absolute top-6 left-6 bg-white/60 p-8 rounded-lg backdrop-blur-xs md:h-[95vh] w-[90vw] sm:max-w-sm",
+                    {
+                        "h-26 md:block overflow-hidden": asideFolded,
+                        "h-[95vh]": !asideFolded,
+                    },
+                )}
+            >
+                <div className="flex justify-between w-full items-center">
+                    <div className="flex gap-4 items-center">
+                        <img
+                            src="/image/logo-chayma.png"
+                            alt="Energy Explorer Logo"
+                            className="mb-2 h-10"
+                        />
+                        <h1 className="text-lg font-bold mb-2">
+                            Energy Explorer
+                        </h1>
+                    </div>
+
+                    <svg
+                        viewBox="0 0 48 48"
+                        xmlns="http://www.w3.org/2000/svg"
+                        className={clsx(
+                            "h-6 w-6 text-black/50 hover:cursor-pointer md:hidden",
+                            {},
+                        )}
+                        onClick={() => setAsideFolded(!asideFolded)}
+                    >
+                        <path
+                            fill="none"
+                            stroke="currentColor"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="4"
+                            d="M7.95 11.95h32m-32 12h32m-32 12h32"
+                        />
+                    </svg>
+                </div>
+                <p
+                    className={clsx(
+                        { hidden: asideFolded },
+                        "text-xs text-black/50",
+                    )}
+                >
                     Bienvenue ! Cette application interactive vous permet
                     d'explorer les potentiels énergétiques (soleil et vent).
                 </p>
@@ -145,7 +187,7 @@ function Carte({ children }: { children?: React.ReactNode }) {
                             },
                         )}
                     >
-                        Ensoleillement
+                        Soleil
                     </button>
                 </div>
             </aside>
