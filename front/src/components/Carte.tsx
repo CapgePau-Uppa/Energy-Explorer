@@ -12,6 +12,7 @@ function Carte({ children }: { children?: React.ReactNode }) {
     >("default");
 
     const [asideFolded, setAsideFolded] = useState(true);
+    const [searchValue, setSearchValue] = useState("");
 
     const [viewState, setViewState] = useState({
         longitude: 0,
@@ -30,6 +31,45 @@ function Carte({ children }: { children?: React.ReactNode }) {
             maplibregl.removeProtocol("pmtiles");
         };
     }, []);
+
+    // Géocodage avec l'API IGN sur Enter
+    const handleSearchSubmit = async () => {
+        if (!searchValue || searchValue.length < 3) {
+            return;
+        }
+
+        try {
+            const response = await fetch(
+                `https://data.geopf.fr/geocodage/search?q=${encodeURIComponent(searchValue)}&limit=1`
+            );
+            const data = await response.json();
+            
+            if (data.features && data.features.length > 0) {
+                const feature = data.features[0];
+                const [lng, lat] = feature.geometry.coordinates;
+                const map = mapRef.current;
+                if (map) {
+                    map.easeTo({
+                        center: [lng, lat],
+                        zoom: 18,
+                        duration: 1000,
+                    });
+                }
+                setSearchValue(feature.properties.label);
+            } else {
+                alert("Aucun résultat trouvé pour cette adresse.");
+            }
+        } catch (error) {
+            console.error("Erreur lors du géocodage:", error);
+            alert("Erreur lors de la recherche d'adresse.");
+        }
+    };
+
+    const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === "Enter") {
+            handleSearchSubmit();
+        }
+    };
 
     const handleLoad = () => {
         const map = mapRef.current?.getMap();
@@ -97,17 +137,12 @@ function Carte({ children }: { children?: React.ReactNode }) {
                     },
                 )}
             >
-                <div className="flex justify-between w-full items-center">
-                    <div className="flex gap-4 items-center">
-                        <img
-                            src="/image/logo-chayma.png"
-                            alt="Energy Explorer Logo"
-                            className="mb-2 h-10"
-                        />
-                        <h1 className="text-lg font-bold mb-2">
-                            Energy Explorer
-                        </h1>
-                    </div>
+                <div className="flex justify-between w-full items-center md:justify-center">
+                    <img
+                        src="/image/logo-v5.svg"
+                        alt="Energy Explorer Logo"
+                        className="mb-2 h-12 "
+                    />
 
                     <svg
                         viewBox="0 0 48 48"
@@ -138,6 +173,20 @@ function Carte({ children }: { children?: React.ReactNode }) {
                     d'explorer les potentiels énergétiques (soleil et vent).
                 </p>
 
+                <h2 className="mt-6 mb-2 text-lg font-semibold">
+                    Recherche d'adresse
+                </h2>
+                <div className="relative mb-4">
+                    <input
+                        type="text"
+                        placeholder="Entrez une adresse et appuyez sur Entrée..."
+                        value={searchValue}
+                        onChange={(e) => setSearchValue(e.target.value)}
+                        onKeyPress={handleKeyPress}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                </div>
+
                 <h2 className="mt-6 mb-1 text-lg font-semibold">
                     Infos debug :
                 </h2>
@@ -147,7 +196,7 @@ function Carte({ children }: { children?: React.ReactNode }) {
                     {viewState.zoom.toFixed(2)}
                 </p>
 
-                <h2 className="mt-6 mb-1 text-lg font-semibold">
+                {/* <h2 className="mt-6 mb-1 text-lg font-semibold">
                     Couches d'énergie
                 </h2>
                 <div className="text-sm flex w-full bg-white/60 p-2 rounded-sm">
@@ -190,7 +239,7 @@ function Carte({ children }: { children?: React.ReactNode }) {
                     >
                         Soleil
                     </button>
-                </div>
+                </div> */}
             </aside>
             <aside
                 className={clsx(
