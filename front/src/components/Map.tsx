@@ -5,7 +5,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { Protocol } from "pmtiles";
 import clsx from "clsx";
 
-function Carte({ children }: { children?: React.ReactNode }) {
+function Map({ children }: { children?: React.ReactNode }) {
     const mapRef = useRef<MapRef>(null);
     const [SelectedLayer, SetSelectedLayer] = useState<
         "default" | "wind" | "solar"
@@ -440,4 +440,4 @@ function Carte({ children }: { children?: React.ReactNode }) {
     );
 }
 
-export default Carte;
+export default Map;
