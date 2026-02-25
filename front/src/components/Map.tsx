@@ -24,7 +24,6 @@ function Map({ children }: { children?: React.ReactNode }) {
     useEffect(() => {
         const protocol = new Protocol();
         maplibregl.addProtocol("pmtiles", protocol.tile);
-        
 
         // Cleanup when component unmounts
         return () => {
@@ -40,10 +39,10 @@ function Map({ children }: { children?: React.ReactNode }) {
 
         try {
             const response = await fetch(
-                `https://data.geopf.fr/geocodage/search?q=${encodeURIComponent(searchValue)}&limit=1`
+                `https://data.geopf.fr/geocodage/search?q=${encodeURIComponent(searchValue)}&limit=1`,
             );
             const data = await response.json();
-            
+
             if (data.features && data.features.length > 0) {
                 const feature = data.features[0];
                 const [lng, lat] = feature.geometry.coordinates;
@@ -113,14 +112,33 @@ function Map({ children }: { children?: React.ReactNode }) {
             >
                 <Source
                     type="raster"
-                    tiles={["https://cdn1.julienc.me/{z}/{x}/{y}.png"]}
+                    tiles={[
+                        "https://cdn1.julienc.me/energy-explorer/wind-tiles2/{z}/{x}/{y}.png",
+                    ]}
                 >
                     {SelectedLayer === "wind" && (
                         <Layer
                             id="raster-layer"
                             type="raster"
                             paint={{
-                                "raster-opacity": 0.8,
+                                "raster-opacity": 0.5
+                            }}
+                        />
+                    )}
+                </Source>
+
+                <Source
+                    type="raster"
+                    tiles={[
+                        "https://cdn1.julienc.me/energy-explorer/solar-tiles-sarah/{z}/{x}/{y}.png",
+                    ]}
+                >
+                    {SelectedLayer === "solar" && (
+                        <Layer
+                            id="raster-layer"
+                            type="raster"
+                            paint={{
+                                "raster-opacity": 0.5
                             }}
                         />
                     )}
@@ -172,7 +190,6 @@ function Map({ children }: { children?: React.ReactNode }) {
                     Bienvenue ! Cette application interactive vous permet
                     d'explorer les potentiels énergétiques (soleil et vent).
                 </p>
-
                 <h2 className="mt-6 mb-2 text-lg font-semibold">
                     Recherche d'adresse
                 </h2>
@@ -186,7 +203,6 @@ function Map({ children }: { children?: React.ReactNode }) {
                         className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                 </div>
-
                 <h2 className="mt-6 mb-1 text-lg font-semibold">
                     Infos debug :
                 </h2>
@@ -195,8 +211,7 @@ function Map({ children }: { children?: React.ReactNode }) {
                     {viewState.latitude.toFixed(4)} | Zoom:{" "}
                     {viewState.zoom.toFixed(2)}
                 </p>
-
-                {/* <h2 className="mt-6 mb-1 text-lg font-semibold">
+                <h2 className="mt-6 mb-1 text-lg font-semibold">
                     Couches d'énergie
                 </h2>
                 <div className="text-sm flex w-full bg-white/60 p-2 rounded-sm">
@@ -239,7 +254,7 @@ function Map({ children }: { children?: React.ReactNode }) {
                     >
                         Soleil
                     </button>
-                </div> */}
+                </div>
             </aside>
             <aside
                 className={clsx(
