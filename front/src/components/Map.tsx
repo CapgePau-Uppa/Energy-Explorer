@@ -4,6 +4,7 @@ import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Protocol } from "pmtiles";
 import clsx from "clsx";
+import { getWindValue, getSolarValue } from "./mapData";
 
 function Map({ children }: { children?: React.ReactNode }) {
     const mapRef = useRef<MapRef>(null);
@@ -103,10 +104,42 @@ function Map({ children }: { children?: React.ReactNode }) {
                 mapStyle="/map/style.json" // Set directly, not conditionally
                 pitch={0}
                 onClick={(evt) => {
-                    const { lngLat } = evt;
+                    /* const { lngLat } = evt;
                     alert(
                         `Clicked at Longitude: ${lngLat.lng}, Latitude: ${lngLat.lat}`,
-                    );
+                    ); */
+                    switch (SelectedLayer) {
+                        case "solar":
+                            getSolarValue(evt.lngLat.lat, evt.lngLat.lng).then((value) => {
+                                alert(
+                                    `Valeur solaire à ce point: ${
+                                        value !== null
+                                            ? `${value.toFixed(2)} kW/m²`
+                                            : "Hors de l'étendue"
+                                    }`,
+                                );
+                            });
+                            break;
+                        case "wind":
+                            getWindValue(evt.lngLat.lat, evt.lngLat.lng).then(
+                                (value) => {
+                                    alert(
+                                        `Valeur vent à ce point: ${
+                                            value !== null
+                                                ? `${value.toFixed(2)} m/s`
+                                                : "Hors de l'étendue"
+                                        }`,
+                                    );
+                                },
+                            );
+                            break;
+                        default:
+                            alert(
+                                `Longitude: ${evt.lngLat.lng.toFixed(4)}, Latitude: ${evt.lngLat.lat.toFixed(4)}`,
+                            );
+                            break;
+                    }
+                            
                 }}
                 //mapStyle="https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json"
             >
@@ -121,7 +154,7 @@ function Map({ children }: { children?: React.ReactNode }) {
                             id="raster-layer"
                             type="raster"
                             paint={{
-                                "raster-opacity": 0.5
+                                "raster-opacity": 0.6,
                             }}
                         />
                     )}
@@ -130,7 +163,7 @@ function Map({ children }: { children?: React.ReactNode }) {
                 <Source
                     type="raster"
                     tiles={[
-                        "https://cdn1.julienc.me/energy-explorer/solar-tiles-sarah/{z}/{x}/{y}.png",
+                        "https://cdn.julienc.me/ter/globalwindsolar/{z}/{x}/{y}.png",
                     ]}
                 >
                     {SelectedLayer === "solar" && (
@@ -138,7 +171,7 @@ function Map({ children }: { children?: React.ReactNode }) {
                             id="raster-layer"
                             type="raster"
                             paint={{
-                                "raster-opacity": 0.5
+                                "raster-opacity": 0.6,
                             }}
                         />
                     )}
@@ -183,15 +216,15 @@ function Map({ children }: { children?: React.ReactNode }) {
                 </div>
                 <p
                     className={clsx(
-                        { hidden: asideFolded },
+                        "md:visible invisible",
                         "text-xs text-black/50",
                     )}
                 >
-                    Bienvenue ! Cette application interactive vous permet
+                    Bienvenue 👋! Cette application interactive vous permet
                     d'explorer les potentiels énergétiques (soleil et vent).
                 </p>
                 <h2 className="mt-6 mb-2 text-lg font-semibold">
-                    Recherche d'adresse
+                    Recherche d'adresse 📌
                 </h2>
                 <div className="relative mb-4">
                     <input
@@ -211,10 +244,10 @@ function Map({ children }: { children?: React.ReactNode }) {
                     {viewState.latitude.toFixed(4)} | Zoom:{" "}
                     {viewState.zoom.toFixed(2)}
                 </p>
-                <h2 className="mt-6 mb-1 text-lg font-semibold">
+                <h2 className="mt-6 mb-2 text-lg font-semibold">
                     Couches d'énergie
                 </h2>
-                <div className="text-sm flex w-full bg-white/60 p-2 rounded-sm">
+                <div className="text-sm flex w-full bg-white/60 px-2 py-1 rounded-md">
                     <button
                         className={clsx(
                             "mr-2 px-4 py-2 rounded-lg w-full transition-all hover:cursor-pointer",
@@ -226,7 +259,7 @@ function Map({ children }: { children?: React.ReactNode }) {
                         )}
                         onClick={() => SetSelectedLayer("default")}
                     >
-                        Default
+                        🗺️ Carte
                     </button>
                     <button
                         onClick={() => SetSelectedLayer("wind")}
@@ -239,7 +272,7 @@ function Map({ children }: { children?: React.ReactNode }) {
                             },
                         )}
                     >
-                        Vent
+                        💨 Vent
                     </button>
                     <button
                         onClick={() => SetSelectedLayer("solar")}
@@ -252,10 +285,29 @@ function Map({ children }: { children?: React.ReactNode }) {
                             },
                         )}
                     >
-                        Soleil
+                        ☀️ Soleil
                     </button>
                 </div>
             </aside>
+
+            {SelectedLayer === "solar" && (
+                <div className="top-6 right-6 absolute">
+                    <img
+                        src="/image/solar-scale.jpg"
+                        alt="Légende Soleil"
+                        className="mt-1 max-w-14 h-auto mx-auto rounded-sm"
+                    />
+                </div>
+            )}
+            {SelectedLayer === "wind" && (
+                <div className="top-6 right-6 absolute">
+                    <img
+                        src="/image/wind-scale.jpg"
+                        alt="Légende Vent"
+                        className="mt-1 max-w-14 h-auto mx-auto rounded-sm"
+                    />
+                </div>
+            )}
             <aside
                 className={clsx(
                     "grid grid-cols-2 transition-all absolute bottom-16 sm:bottom-12 right-6 gap-1",
