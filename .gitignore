@@ -146,3 +146,6 @@ pyrightconfig.json
 temp/
 .DS_Store
 .vscode/
+
+temp/
+*.db
