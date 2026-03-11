@@ -147,7 +147,8 @@ function Map({ children }: { children?: React.ReactNode }) {
                 <Source
                     type="raster"
                     tiles={[
-                        "https://cdn1.julienc.me/energy-explorer/wind-tiles2/{z}/{x}/{y}.png",
+                        import.meta.env.PUBLIC_WIND_TILES ||
+                            "https://cdn1.julienc.me/energy-explorer/wind-tiles2/{z}/{x}/{y}.png",
                     ]}
                 >
                     {SelectedLayer === "wind" && (
@@ -164,7 +165,8 @@ function Map({ children }: { children?: React.ReactNode }) {
                 <Source
                     type="raster"
                     tiles={[
-                        "https://cdn.julienc.me/ter/globalwindsolar/{z}/{x}/{y}.png",
+                        import.meta.env.PUBLIC_SOLAR_TILES ||
+                            "https://cdn.julienc.me/ter/globalwindsolar/{z}/{x}/{y}.png",
                     ]}
                 >
                     {SelectedLayer === "solar" && (

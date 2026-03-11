@@ -206,7 +206,8 @@ function Game({ children }: { children?: React.ReactNode }) {
                     <Source
                         type="raster"
                         tiles={[
-                            "https://cdn.julienc.me/ter/globalwindsolar/{z}/{x}/{y}.png",
+                            import.meta.env.PUBLIC_SOLAR_TILES ||
+                                "https://cdn.julienc.me/ter/globalwindsolar/{z}/{x}/{y}.png",
                         ]}
                     >
                         <Layer
