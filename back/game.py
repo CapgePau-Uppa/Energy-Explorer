@@ -7,6 +7,7 @@ quiz_bp = Blueprint('quiz', __name__)
 
 nb_rounds = 3
 
+
 def init_db():
     conn = sqlite3.connect('parties.db')
     c = conn.cursor()
@@ -31,7 +32,8 @@ def init_db():
     ''')
     conn.commit()
     conn.close()
-    
+
+
 init_db()
 
 
@@ -45,23 +47,25 @@ def solar_quiz(lat, lon):
     row, col = dataset_solar.index(lon, lat)
     return float(data_solar[row, col])
 
+
 def wind_quiz(lat, lon):
     row, col = dataset_wind.index(lon, lat)
     return float(data_wind[row, col])
+
 
 @quiz_bp.route("/create_game")
 def create_game():
     energy_type = request.args.get("energy_type", "solar")
     if energy_type not in ["solar", "wind"]:
         return jsonify({"error": "Invalid energy type"}), 400
-    
+
     # Create a game in the database and return the game ID
     cursor = get_db().cursor()
-    cursor.execute("INSERT INTO parties (energy_type) VALUES (?)", (energy_type,))
+    cursor.execute(
+        "INSERT INTO parties (energy_type) VALUES (?)", (energy_type,))
     partie_id = cursor.lastrowid
     get_db().commit()
 
-    
     session["partie_id"] = partie_id
     session["round"] = 0
     session["score"] = 0
@@ -112,7 +116,6 @@ def create_round():
         "energy_type": energy_type,
     })
 
-    
 
 @quiz_bp.route("/game_progress")
 def game_progress():
@@ -123,13 +126,12 @@ def game_progress():
 
     if lat is None or lon is None or energy_type is None or round_num is None:
         return jsonify({"error": "No active round"}), 400
-    
+
     if (request.args.get("lat") is None) or (request.args.get("lon") is None):
         return jsonify({"error": "Missing lat or lon in request"}), 400
 
     lat_guess = float(request.args.get("lat"))
     lon_guess = float(request.args.get("lon"))
-
 
     score_gained = check_potentiel(lat, lon, lat_guess, lon_guess, energy_type)
 
@@ -147,7 +149,8 @@ def game_progress():
     if session["round"] >= nb_rounds:
         cursor = get_db().cursor()
         # Calculate total score for the game
-        cursor.execute("SELECT SUM(score) FROM rounds WHERE partie_id = ?", (partie_id,))
+        cursor.execute(
+            "SELECT SUM(score) FROM rounds WHERE partie_id = ?", (partie_id,))
         total_score = cursor.fetchone()[0] or 0
 
         result = {
@@ -170,7 +173,8 @@ def game_progress():
             "partie_ended": False,
             "current_score": session["score"],
             "rounds_played": session["round"],
-            "energy_type": energy_type
+            "energy_type": energy_type,
+            "score_gained": score_gained
         }
 
         # Update round info for the next round
@@ -195,4 +199,3 @@ def check_potentiel(lat, lon, lat_guess, lon_guess, energy_type) -> int:
             return 0
     else:
         raise ValueError("Invalid energy type")
-
