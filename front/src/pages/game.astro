@@ -1,6 +1,6 @@
 ---
-import Map from "../components/Map";
 import "../styles/global.css";
+import GameComponent from "../components/GamePotentiel";
 ---
 
 <html lang="fr">
@@ -10,11 +10,11 @@ import "../styles/global.css";
         <link rel="icon" href="/favicon.ico" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="generator" content={Astro.generator} />
-        <title>Carte - Energy Explorer</title>
+        <title>Jeu - Energy Explorer</title>
     </head>
     <body class="">
         <div class="h-screen w-screen">
-            <Map client:load />
+            <GameComponent client:load />
         </div>
     </body>
 </html>
