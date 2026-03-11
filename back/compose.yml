@@ -1,0 +1,11 @@
+services:
+  flask-app:
+    image: ghcr.io/julien040/energy-explorer-backend:latest
+    ports:
+      - "127.0.0.1:5051:5051"
+    volumes:
+      - ./data:/app/data
+      - ./parties.db:/app/parties.db
+    environment:
+      - FLASK_ENV=production
+    restart: unless-stopped

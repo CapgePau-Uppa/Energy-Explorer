@@ -110,15 +110,17 @@ function Map({ children }: { children?: React.ReactNode }) {
                     ); */
                     switch (SelectedLayer) {
                         case "solar":
-                            getSolarValue(evt.lngLat.lat, evt.lngLat.lng).then((value) => {
-                                alert(
-                                    `Valeur solaire à ce point: ${
-                                        value !== null
-                                            ? `${value.toFixed(2)} kW/m²`
-                                            : "Hors de l'étendue"
-                                    }`,
-                                );
-                            });
+                            getSolarValue(evt.lngLat.lat, evt.lngLat.lng).then(
+                                (value) => {
+                                    alert(
+                                        `Valeur solaire à ce point: ${
+                                            value !== null
+                                                ? `${value.toFixed(2)} kW/m²`
+                                                : "Hors de l'étendue"
+                                        }`,
+                                    );
+                                },
+                            );
                             break;
                         case "wind":
                             getWindValue(evt.lngLat.lat, evt.lngLat.lng).then(
@@ -139,7 +141,6 @@ function Map({ children }: { children?: React.ReactNode }) {
                             );
                             break;
                     }
-                            
                 }}
                 //mapStyle="https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json"
             >
@@ -181,7 +182,7 @@ function Map({ children }: { children?: React.ReactNode }) {
 
             <aside
                 className={clsx(
-                    "transition-all absolute top-6 left-6 bg-white/60 p-8 rounded-lg backdrop-blur-xs md:h-[95vh] w-[90vw] sm:max-w-sm",
+                    "flex flex-col transition-all absolute top-6 left-6 bg-white/60 p-8 rounded-lg backdrop-blur-xs md:h-[95vh] w-[90vw] sm:max-w-sm",
                     {
                         "h-26 md:block overflow-hidden": asideFolded,
                         "h-[95vh]": !asideFolded,
@@ -288,6 +289,16 @@ function Map({ children }: { children?: React.ReactNode }) {
                         ☀️ Soleil
                     </button>
                 </div>
+
+                <h2 className="mt-6 mb-1 text-lg font-semibold">
+                    Devine les potentiels énergétiques ! 🎮
+                </h2>
+                <a
+                    href="/game"
+                    className="flex items-center justify-center bg-black text-white px-4 py-2 mt-2 text-sm rounded-lg w-full transition-all"
+                >
+                    Jouer au quiz
+                </a>
             </aside>
 
             {SelectedLayer === "solar" && (
