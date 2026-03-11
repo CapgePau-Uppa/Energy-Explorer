@@ -304,7 +304,7 @@ function Map({ children }: { children?: React.ReactNode }) {
             </aside>
 
             {SelectedLayer === "solar" && (
-                <div className="top-6 right-6 absolute">
+                <div className="top-6 right-6 absolute hidden md:block">
                     <img
                         src="/image/solar-scale.jpg"
                         alt="Légende Soleil"
@@ -313,7 +313,7 @@ function Map({ children }: { children?: React.ReactNode }) {
                 </div>
             )}
             {SelectedLayer === "wind" && (
-                <div className="top-6 right-6 absolute">
+                <div className="top-6 right-6 absolute hidden md:block">
                     <img
                         src="/image/wind-scale.jpg"
                         alt="Légende Vent"
