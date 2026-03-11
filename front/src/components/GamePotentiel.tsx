@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import MapLibre, {
     Marker,
+    Source,
+    Layer,
     type MapLayerMouseEvent,
     type MapRef,
 } from "react-map-gl/maplibre";
@@ -190,14 +192,31 @@ function Game({ children }: { children?: React.ReactNode }) {
 
                 //mapStyle="https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json"
             >
-                {Step.type === "round-validation" && CurrentPinPosition && (
-                    <Marker
-                        latitude={CurrentPinPosition.lat}
-                        longitude={CurrentPinPosition.lon}
-                        anchor="bottom"
+                {(Step.type === "round-validation" || Step.type === "end") &&
+                    CurrentPinPosition && (
+                        <Marker
+                            latitude={CurrentPinPosition.lat}
+                            longitude={CurrentPinPosition.lon}
+                            anchor="bottom"
+                        >
+                            <div className="w-6 h-6 bg-red-500 rounded-full border-2 border-white" />
+                        </Marker>
+                    )}
+                {(Step.type === "round-score" || Step.type === "end") && (
+                    <Source
+                        type="raster"
+                        tiles={[
+                            "https://cdn.julienc.me/ter/globalwindsolar/{z}/{x}/{y}.png",
+                        ]}
                     >
-                        <div className="w-6 h-6 bg-red-500 rounded-full border-2 border-white" />
-                    </Marker>
+                        <Layer
+                            id="raster-layer"
+                            type="raster"
+                            paint={{
+                                "raster-opacity": 0.6,
+                            }}
+                        />
+                    </Source>
                 )}
                 {children}
             </MapLibre>
@@ -231,6 +250,12 @@ function Game({ children }: { children?: React.ReactNode }) {
                         },
                     )}
                 >
+                    <a
+                        href="/"
+                        className="text-xs text-black/60 hover:underline"
+                    >
+                        Retour à l'accueil
+                    </a>
                     <h1 className="text-lg md:text-2xl">
                         Bienvenue dans le quiz ☺️
                     </h1>
@@ -255,6 +280,12 @@ function Game({ children }: { children?: React.ReactNode }) {
                         },
                     )}
                 >
+                    <a
+                        href="/"
+                        className="text-xs text-black/60 hover:underline"
+                    >
+                        Retour à l'accueil
+                    </a>
                     <h1 className="text-lg md:text-2xl">
                         Le principe du jeu 📋
                     </h1>
@@ -315,7 +346,7 @@ function Game({ children }: { children?: React.ReactNode }) {
                     </h1>
                     <p className="text-sm md:text-base   text-black/60">
                         Sur cette zone, où penses-tu qu’il serait le plus
-                        judicieux de placer une éolienne ? 🤔
+                        judicieux de placer des panneaux solaires ? 🤔
                     </p>
 
                     <button
@@ -357,9 +388,9 @@ function Game({ children }: { children?: React.ReactNode }) {
                     </p>
 
                     <p className="text-sm md:text-base   text-black/60">
-                        Si t’avais construit une éolienne à cet endroit là, elle
-                        aurait permis de produire 4000 mWh, de quoi alimenter
-                        800 foyers.
+                        Si t’avais construit des panneaux solaires à cet endroit
+                        là, ils aurait permis de produire 4000 mWh, de quoi
+                        alimenter 800 foyers.
                     </p>
 
                     <button
