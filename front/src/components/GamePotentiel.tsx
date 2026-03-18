@@ -35,6 +35,8 @@ function Game({ children }: { children?: React.ReactNode }) {
     const [CurrentPinPosition, setCurrentPinPosition] =
         useState<pinPosition | null>(null);
 
+    let valueClicked = 0;
+
     console.log(Score);
     console.log(Step);
     const handleLoad = () => {
@@ -88,6 +90,18 @@ function Game({ children }: { children?: React.ReactNode }) {
     const startClickedWind = async () => {
         setGameKind("wind");
         setStep({ type: "round-select", round: 0 });
+
+        const urlToFetch = `${import.meta.env.PUBLIC_BACKEND_SERVER}/quiz/create_game?energy_type=wind`;
+        setLoading(true);
+
+        const createGameResponse = await fetch(urlToFetch, {
+            credentials: "include",
+        });
+        const createGameData = await createGameResponse.json();
+        console.log("Create game response:", createGameData);
+        setLoading(false);
+
+        await nextRoundClicked();
     };
 
     const nextRoundClicked = async () => {
@@ -253,8 +267,21 @@ function Game({ children }: { children?: React.ReactNode }) {
                 >
                     <a
                         href="/"
-                        className="text-xs text-black/60 hover:underline"
+                        className="text-xs flex gap-2 items-center text-black/60 hover:underline mb-2"
                     >
+                        <div className="p-2 bg-gray-200 rounded-full flex items-center justify-center">
+                            <svg
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                xmlns="http://www.w3.org/2000/svg"
+                            >
+                                <path
+                                    fill="currentColor"
+                                    d="m4 10l-.707.707L2.586 10l.707-.707zm17 8a1 1 0 1 1-2 0zM8.293 15.707l-5-5l1.414-1.414l5 5zm-5-6.414l5-5l1.414 1.414l-5 5zM4 9h10v2H4zm17 7v2h-2v-2zm-7-7a7 7 0 0 1 7 7h-2a5 5 0 0 0-5-5z"
+                                />
+                            </svg>
+                        </div>
                         Retour à l'accueil
                     </a>
                     <h1 className="text-lg md:text-2xl">
@@ -283,8 +310,21 @@ function Game({ children }: { children?: React.ReactNode }) {
                 >
                     <a
                         href="/"
-                        className="text-xs text-black/60 hover:underline"
+                        className="text-xs flex gap-2 items-center text-black/60 hover:underline mb-2"
                     >
+                        <div className="p-2 bg-gray-200 rounded-full flex items-center justify-center">
+                            <svg
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                xmlns="http://www.w3.org/2000/svg"
+                            >
+                                <path
+                                    fill="currentColor"
+                                    d="m4 10l-.707.707L2.586 10l.707-.707zm17 8a1 1 0 1 1-2 0zM8.293 15.707l-5-5l1.414-1.414l5 5zm-5-6.414l5-5l1.414 1.414l-5 5zM4 9h10v2H4zm17 7v2h-2v-2zm-7-7a7 7 0 0 1 7 7h-2a5 5 0 0 0-5-5z"
+                                />
+                            </svg>
+                        </div>
                         Retour à l'accueil
                     </a>
                     <h1 className="text-lg md:text-2xl">
@@ -303,7 +343,7 @@ function Game({ children }: { children?: React.ReactNode }) {
                     <div className="flex sm:flex-row flex-col gap-4">
                         <button
                             className={clsx(
-                                "mt-4 w-full py-2 disabled bg-game-button disabled:bg-game-button/40 disabled:cursor-not-allowed text-white rounded hover:bg-game-button-hover transition-colors cursor-pointer",
+                                "mt-4 w-full py-2 bg-game-button disabled:bg-game-button/40 disabled:cursor-not-allowed text-white rounded hover:bg-game-button-hover transition-colors cursor-pointer",
                                 {
                                     "animate-bounce": Loading,
                                 },
@@ -314,12 +354,11 @@ function Game({ children }: { children?: React.ReactNode }) {
                         </button>
                         <button
                             className={clsx(
-                                "mt-4 w-full py-2 disabled bg-game-button disabled:bg-game-button/40 disabled:cursor-not-allowed text-white rounded hover:bg-game-button-hover transition-colors cursor-pointer",
+                                "mt-4 w-full py-2 bg-game-button disabled:bg-game-button/40 disabled:cursor-not-allowed text-white rounded hover:bg-game-button-hover transition-colors cursor-pointer",
                                 {
                                     "animate-bounce": Loading,
                                 },
                             )}
-                            disabled
                             onClick={startClickedWind}
                         >
                             Commencer avec le vent 🌬️
@@ -388,12 +427,6 @@ function Game({ children }: { children?: React.ReactNode }) {
                         {LastScore} points
                     </p>
 
-                    <p className="text-sm md:text-base   text-black/60">
-                        Si t’avais construit des panneaux solaires à cet endroit
-                        là, ils aurait permis de produire 4000 mWh, de quoi
-                        alimenter 800 foyers.
-                    </p>
-
                     <button
                         className={clsx(
                             "mt-4 w-full py-2 bg-game-button disabled:bg-game-button/40 disabled:cursor-not-allowed text-white rounded hover:bg-game-button-hover transition-colors cursor-pointer",
@@ -417,8 +450,27 @@ function Game({ children }: { children?: React.ReactNode }) {
                         },
                     )}
                 >
+                    <a
+                        href="/"
+                        className="text-xs flex gap-2 items-center text-black/60 hover:underline mb-2"
+                    >
+                        <div className="p-2 bg-white rounded-full flex items-center justify-center">
+                            <svg
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                xmlns="http://www.w3.org/2000/svg"
+                            >
+                                <path
+                                    fill="currentColor"
+                                    d="m4 10l-.707.707L2.586 10l.707-.707zm17 8a1 1 0 1 1-2 0zM8.293 15.707l-5-5l1.414-1.414l5 5zm-5-6.414l5-5l1.414 1.414l-5 5zM4 9h10v2H4zm17 7v2h-2v-2zm-7-7a7 7 0 0 1 7 7h-2a5 5 0 0 0-5-5z"
+                                />
+                            </svg>
+                        </div>
+                        Retour à l'accueil
+                    </a>
                     <h1 className="text-lg md:text-2xl">
-                        T’es super doué(e)💪 Félicitations !
+                        T'es super doué(e)💪 Félicitations !
                     </h1>
 
                     <p className="text-xs text-black/80 mt-8">Score final:</p>

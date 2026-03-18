@@ -2,10 +2,10 @@ from flask import Flask, request, jsonify, session
 from game import quiz_bp
 from dataset import dataset_solar, data_solar, dataset_wind, data_wind
 import sqlite3
-from flask_cors import CORS
+import flask_cors
 
 app = Flask(__name__)
-CORS(app, supports_credentials=True)
+flask_cors.CORS(app, supports_credentials=True)
 app.secret_key = "your_secret_key"
 app.register_blueprint(quiz_bp, url_prefix="/quiz")
 # required for cross-origin fetch

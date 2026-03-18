@@ -70,6 +70,7 @@ def create_game():
     session["round"] = 0
     session["score"] = 0
     session["energy_type"] = energy_type
+    session["consecutive_wins"] = 0
 
     return jsonify({"partie_id": partie_id, "energy_type": energy_type, "rounds_total": nb_rounds})
 
@@ -135,8 +136,19 @@ def game_progress():
 
     score_gained = check_potentiel(lat, lon, lat_guess, lon_guess, energy_type)
 
+
+    if score_gained == 100: 
+        session["consecutive_wins"] += 1
+    else:
+        session["consecutive_wins"] = 0
+
+    if session["consecutive_wins"] == 3 and score_gained == 100:
+        score_gained *= 2    
+
+    session["score"] += score_gained   
     session["round"] += 1
-    session["score"] += score_gained
+
+
 
     # Save the score for this round in the database
     partie_id = session.get("partie_id")
@@ -185,17 +197,18 @@ def game_progress():
 
 
 def check_potentiel(lat, lon, lat_guess, lon_guess, energy_type) -> int:
+   
     if energy_type == "solar":
         value = solar_quiz(lat, lon)
         if value > 1.6:
             return 100
         else:
-            return 0
+            return -20
     elif energy_type == "wind":
         value = wind_quiz(lat, lon)
         if value > 6:
             return 100
         else:
-            return 0
+            return -20
     else:
         raise ValueError("Invalid energy type")
