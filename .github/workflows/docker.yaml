@@ -1,7 +1,5 @@
 name: Build & Push Docker Image
-permissions:
-  packages: write
-  contents: read
+
 on:
   push:
     branches:
@@ -10,6 +8,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
 
     steps:
       - name: Checkout code
@@ -26,7 +27,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build & Push
+        working-directory: back
         run: |
-          chmod +x back/build-docker.sh
-          cd back
+          chmod +x build-docker.sh
           ./build-docker.sh
