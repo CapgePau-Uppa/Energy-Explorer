@@ -134,21 +134,19 @@ def game_progress():
     lat_guess = float(request.args.get("lat"))
     lon_guess = float(request.args.get("lon"))
 
-    score_gained = check_potentiel(lat, lon, lat_guess, lon_guess, energy_type)
+    score_gained, value = check_potentiel(
+        lat, lon, lat_guess, lon_guess, energy_type)
 
-
-    if score_gained == 100: 
+    if score_gained == 100:
         session["consecutive_wins"] += 1
     else:
         session["consecutive_wins"] = 0
 
     if session["consecutive_wins"] == 3 and score_gained == 100:
-        score_gained *= 2    
+        score_gained *= 2
 
-    session["score"] += score_gained   
+    session["score"] += score_gained
     session["round"] += 1
-
-
 
     # Save the score for this round in the database
     partie_id = session.get("partie_id")
@@ -169,6 +167,8 @@ def game_progress():
             "partie_ended": True,
             "partie_id": partie_id,
             "total_score": total_score,
+            "score_gained": score_gained,
+            "value": value,
             "energy_type": energy_type,
             "rounds_played": nb_rounds
         }
@@ -186,7 +186,8 @@ def game_progress():
             "current_score": session["score"],
             "rounds_played": session["round"],
             "energy_type": energy_type,
-            "score_gained": score_gained
+            "score_gained": score_gained,
+            "value": value
         }
 
         # Update round info for the next round
@@ -196,19 +197,19 @@ def game_progress():
     return jsonify(result)
 
 
-def check_potentiel(lat, lon, lat_guess, lon_guess, energy_type) -> int:
-   
+def check_potentiel(lat, lon, lat_guess, lon_guess, energy_type) -> (int, float):
+
     if energy_type == "solar":
         value = solar_quiz(lat, lon)
         if value > 1.6:
-            return 100
+            return 100, value
         else:
-            return -20
+            return -20, value
     elif energy_type == "wind":
         value = wind_quiz(lat, lon)
         if value > 6:
-            return 100
+            return 100, value
         else:
-            return -20
+            return -20, value
     else:
         raise ValueError("Invalid energy type")
