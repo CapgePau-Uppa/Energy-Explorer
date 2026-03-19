@@ -385,8 +385,11 @@ function Game({ children }: { children?: React.ReactNode }) {
                             : "Place une éolienne 📌"}
                     </h1>
                     <p className="text-sm md:text-base   text-black/60">
-                        Sur cette zone, où penses-tu qu’il serait le plus
-                        judicieux de placer des panneaux solaires ? 🤔
+                        {/* Sur cette zone, où penses-tu qu’il serait le plus
+                        judicieux de placer des panneaux solaires ? 🤔 */}
+                        {GameKind === "solar"
+                            ? "Sur cette zone, où penses-tu qu’il serait le plus judicieux de placer des panneaux solaires ? 🤔"
+                            : "Sur cette zone, où penses-tu qu’il serait le plus judicieux de placer une éolienne ? 🤔"}
                     </p>
 
                     <button
