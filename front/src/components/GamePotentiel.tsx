@@ -34,6 +34,7 @@ function Game({ children }: { children?: React.ReactNode }) {
     const [Loading, setLoading] = useState(false);
     const [CurrentPinPosition, setCurrentPinPosition] =
         useState<pinPosition | null>(null);
+    const [LastValue, setLastValue] = useState(0);
 
     let valueClicked = 0;
 
@@ -173,12 +174,15 @@ function Game({ children }: { children?: React.ReactNode }) {
         console.log("Validate round response:", validateRoundData);
         setLoading(false);
 
+        setLastValue(validateRoundData.value);
+
         if (!validateRoundData.partie_ended) {
             setScore(validateRoundData.current_score);
             setLastScore(validateRoundData.score_gained);
             setStep({ type: "round-score", round: Step.round });
         } else {
             setScore(validateRoundData.total_score);
+            setLastScore(validateRoundData.score_gained);
             setStep({ type: "end" });
         }
     };
@@ -216,23 +220,42 @@ function Game({ children }: { children?: React.ReactNode }) {
                             <div className="w-6 h-6 bg-red-500 rounded-full border-2 border-white" />
                         </Marker>
                     )}
-                {(Step.type === "round-score" || Step.type === "end") && (
-                    <Source
-                        type="raster"
-                        tiles={[
-                            import.meta.env.PUBLIC_SOLAR_TILES ||
-                                "https://cdn.julienc.me/ter/globalwindsolar/{z}/{x}/{y}.png",
-                        ]}
-                    >
-                        <Layer
-                            id="raster-layer"
+                {(Step.type === "round-score" || Step.type === "end") &&
+                    GameKind === "solar" && (
+                        <Source
                             type="raster"
-                            paint={{
-                                "raster-opacity": 0.6,
-                            }}
-                        />
-                    </Source>
-                )}
+                            tiles={[
+                                import.meta.env.PUBLIC_SOLAR_TILES ||
+                                    "https://cdn.julienc.me/ter/globalwindsolar/{z}/{x}/{y}.png",
+                            ]}
+                        >
+                            <Layer
+                                id="raster-layer"
+                                type="raster"
+                                paint={{
+                                    "raster-opacity": 0.6,
+                                }}
+                            />
+                        </Source>
+                    )}
+                {(Step.type === "round-score" || Step.type === "end") &&
+                    GameKind === "wind" && (
+                        <Source
+                            type="raster"
+                            tiles={[
+                                import.meta.env.PUBLIC_WIND_TILES ||
+                                    "https://cdn1.julienc.me/energy-explorer/wind-tiles2/{z}/{x}/{y}.png",
+                            ]}
+                        >
+                            <Layer
+                                id="raster-layer"
+                                type="raster"
+                                paint={{
+                                    "raster-opacity": 0.6,
+                                }}
+                            />
+                        </Source>
+                    )}
                 {children}
             </MapLibre>
             <div
@@ -247,8 +270,8 @@ function Game({ children }: { children?: React.ReactNode }) {
                         <p>Score:</p>
                         <p
                             className={clsx("text-lg font-semibold", {
-                                "text-green-600": Score > 150,
-                                "text-red-600": Score <= 150,
+                                "text-green-600": Score > 0,
+                                "text-red-600": Score <= 0,
                             })}
                         >
                             {Score} points
@@ -415,11 +438,16 @@ function Game({ children }: { children?: React.ReactNode }) {
                         },
                     )}
                 >
-                    <h1 className="text-lg md:text-2xl py-8">
+                    <h1 className="text-lg md:text-2xl pt-8">
                         {LastScore > 20
-                            ? "T’as réussi 👏"
+                            ? "T'as réussi 👏"
                             : "Presque, tu feras mieux la prochaine fois 😬"}
                     </h1>
+                    <p className="text-sm md:text-base   text-black/60 mb-8">
+                        {LastScore > 20
+                            ? "Ta position était très bonne, tu as gagné pas mal de points !"
+                            : "Ta position n'était pas optimale, tu n'as pas gagné beaucoup de points cette fois-ci."}
+                    </p>
 
                     <p
                         className={clsx("text-lg font-semibold", {
@@ -427,7 +455,8 @@ function Game({ children }: { children?: React.ReactNode }) {
                             "text-red-600": LastScore <= 20,
                         })}
                     >
-                        {LastScore} points
+                        {LastScore} points {LastScore < 0 ? "perdus" : "gagnés"}{" "}
+                        {LastScore === 200 ? "🎉 Combo 2x!" : ""}
                     </p>
 
                     <button
@@ -442,6 +471,22 @@ function Game({ children }: { children?: React.ReactNode }) {
                     >
                         Suivant
                     </button>
+                    <p className="text-sm text-black/60 mt-4">
+                        À l'endroit où tu as cliqué, le potentiel énergétique
+                        est de {LastValue.toFixed(2)}{" "}
+                        {GameKind === "solar" ? "kWh/m²/jour. " : "m/s. "}.{" "}
+                        <br />
+                        {GameKind === "solar" // Panneau solaire 1.6M2, rendement de 16%, ampoule 7W
+                            ? `Ça fait ${(LastValue * 1.6 * 0.16).toFixed(2)} kWh par jour, soit de quoi faire fonctionner une ampoule de 7W pendant ${(
+                                  (LastValue * 1.6 * 0.16) /
+                                  0.007
+                              ).toFixed(2)} heures !`
+                            : `C'est plutôt ${
+                                  LastValue > 4
+                                      ? "élevé, un bon emplacement pour une éolienne !"
+                                      : "faible, une éolienne fonctionne à partir de 3-4 m/s, donc ce n'est pas un emplacement idéal."
+                              }`}
+                    </p>
                 </div>
                 <div
                     id="end-screen"
@@ -473,17 +518,22 @@ function Game({ children }: { children?: React.ReactNode }) {
                         Retour à l'accueil
                     </a>
                     <h1 className="text-lg md:text-2xl">
-                        T'es super doué(e)💪 Félicitations !
+                        T'es super doué(e)💪 <br /> Félicitations !
                     </h1>
 
                     <p className="text-xs text-black/80 mt-8">Score final:</p>
                     <p
-                        className={clsx("text-lg font-semibold mb-8", {
+                        className={clsx("text-lg font-semibold mb-1", {
                             "text-green-600": Score > 150,
                             "text-red-600": Score <= 150,
                         })}
                     >
                         {Score} points
+                    </p>
+                    <p className={clsx("text-xs text-black/50 mb-8", {})}>
+                        {LastScore} points {LastScore < 0 ? "perdus" : "gagnés"}{" "}
+                        au dernier round{" "}
+                        {LastScore === 200 ? "🎉 Combo 2x!" : ""}
                     </p>
 
                     <p className="text-sm md:text-base   text-black/60">

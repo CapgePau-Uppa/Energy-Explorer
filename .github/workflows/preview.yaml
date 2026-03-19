@@ -2,20 +2,27 @@ name: Vercel Production Deployment
 env:
   VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
   VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
 on:
   push:
     branches:
       - main
+
 jobs:
   Deploy-Production:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: front  
+
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
+
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
-      - name: Go to Project Directory
-        run: cd front
+
       - name: Pull Vercel Environment Information
         run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+
       - name: Request Vercel Production Deployment
         run: vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }}
