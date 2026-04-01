@@ -36,6 +36,8 @@ function Game({ children }: { children?: React.ReactNode }) {
         useState<pinPosition | null>(null);
     const [LastValue, setLastValue] = useState(0);
 
+    const [PerfectPoint, setPerfectPoint] = useState<pinPosition | null>(null);
+
     let valueClicked = 0;
 
     console.log(Score);
@@ -176,6 +178,11 @@ function Game({ children }: { children?: React.ReactNode }) {
 
         setLastValue(validateRoundData.value);
 
+        setPerfectPoint({
+            lat: validateRoundData.best_lat,
+            lon: validateRoundData.best_lon,
+        });
+
         if (!validateRoundData.partie_ended) {
             setScore(validateRoundData.current_score);
             setLastScore(validateRoundData.score_gained);
@@ -186,6 +193,9 @@ function Game({ children }: { children?: React.ReactNode }) {
             setStep({ type: "end" });
         }
     };
+
+    console.log("CurrentPinPosition:", CurrentPinPosition);
+    console.log("PerfectPoint:", PerfectPoint);
 
     return (
         <div className="h-full">
@@ -210,7 +220,9 @@ function Game({ children }: { children?: React.ReactNode }) {
 
                 //mapStyle="https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json"
             >
-                {(Step.type === "round-validation" || Step.type === "end") &&
+                {(Step.type === "round-validation" ||
+                    Step.type === "end" ||
+                    Step.type === "round-score") &&
                     CurrentPinPosition && (
                         <Marker
                             latitude={CurrentPinPosition.lat}
@@ -220,6 +232,16 @@ function Game({ children }: { children?: React.ReactNode }) {
                             <div className="w-6 h-6 bg-red-500 rounded-full border-2 border-white" />
                         </Marker>
                     )}
+
+                {(Step.type === "round-score" || Step.type === "end") && (
+                    <Marker
+                        latitude={PerfectPoint?.lat || 0}
+                        longitude={PerfectPoint?.lon || 0}
+                        anchor="bottom"
+                    >
+                        <div className="w-6 h-6 bg-blue-500 rounded-full border-2 border-white" />
+                    </Marker>
+                )}
                 {(Step.type === "round-score" || Step.type === "end") &&
                     GameKind === "solar" && (
                         <Source
@@ -256,6 +278,7 @@ function Game({ children }: { children?: React.ReactNode }) {
                             />
                         </Source>
                     )}
+
                 {children}
             </MapLibre>
             <div

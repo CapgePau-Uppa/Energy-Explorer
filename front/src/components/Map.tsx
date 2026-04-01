@@ -150,10 +150,11 @@ function Map({ children }: { children?: React.ReactNode }) {
                         import.meta.env.PUBLIC_WIND_TILES ||
                             "https://cdn1.julienc.me/energy-explorer/wind-tiles2/{z}/{x}/{y}.png",
                     ]}
+                    id="wind-source"
                 >
                     {SelectedLayer === "wind" && (
                         <Layer
-                            id="raster-layer"
+                            id="raster-layer-wind"
                             type="raster"
                             paint={{
                                 "raster-opacity": 0.6,
@@ -168,16 +169,46 @@ function Map({ children }: { children?: React.ReactNode }) {
                         import.meta.env.PUBLIC_SOLAR_TILES ||
                             "https://cdn.julienc.me/ter/globalwindsolar/{z}/{x}/{y}.png",
                     ]}
+                    id="solar-source"
                 >
                     {SelectedLayer === "solar" && (
                         <Layer
-                            id="raster-layer"
+                            id="raster-layer-solar"
                             type="raster"
                             paint={{
                                 "raster-opacity": 0.6,
                             }}
                         />
                     )}
+                </Source>
+                <Source
+                    id="my-line"
+                    type="geojson"
+                    data={{
+                        type: "FeatureCollection",
+                        features: [
+                            {
+                                type: "Feature",
+                                properties: {},
+                                geometry: {
+                                    type: "LineString",
+                                    coordinates: [
+                                        [0, 46.71],
+                                        [10, 46.71],
+                                    ],
+                                },
+                            },
+                        ],
+                    }}
+                >
+                    <Layer
+                        id="drawing-route-layer"
+                        type="line"
+                        paint={{
+                            "line-color": "#ff0000",
+                            "line-width": 5,
+                        }}
+                    />
                 </Source>
                 {children}
             </MapLibre>
