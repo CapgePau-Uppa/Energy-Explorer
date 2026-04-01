@@ -1,6 +1,8 @@
 import numpy as np
 from flask import Blueprint, request, jsonify, session, g
-from dataset import dataset_solar, dataset_wind, data_solar, data_wind, valid_indices_solar, valid_indices_wind
+from dataset import (dataset_solar, dataset_wind, data_solar, data_wind,
+                     valid_indices_solar, valid_indices_wind,
+                     compute_regional_score)
 import sqlite3
 
 quiz_bp = Blueprint('quiz', __name__)
@@ -27,6 +29,10 @@ def init_db():
             lon REAL,
             fort_potentiel BOOLEAN,
             score INTEGER,
+            percentile_rank REAL,
+            best_lat REAL,
+            best_lon REAL,
+            best_value REAL,
             FOREIGN KEY(partie_id) REFERENCES parties(id)
         )
     ''')
@@ -85,7 +91,6 @@ def create_round():
     if round_num >= nb_rounds:
         return jsonify({"error": "Game is already over"}), 400
 
-    # Pick a random energy type
     energy_type = session.get("energy_type")
     if energy_type not in ["solar", "wind"]:
         return jsonify({"error": "Invalid energy type in session"}), 400
@@ -131,10 +136,10 @@ def game_progress():
     if (request.args.get("lat") is None) or (request.args.get("lon") is None):
         return jsonify({"error": "Missing lat or lon in request"}), 400
 
-    lat_guess = float(request.args.get("lat"))
-    lon_guess = float(request.args.get("lon"))
+    lat_guess = float(request.args["lat"])
+    lon_guess = float(request.args["lon"])
 
-    score_gained, value = check_potentiel(
+    score_gained, value, percentile_rank, best_lat, best_lon, best_value = check_potentiel(
         lat, lon, lat_guess, lon_guess, energy_type)
 
     if score_gained == 100:
@@ -148,12 +153,12 @@ def game_progress():
     session["score"] += score_gained
     session["round"] += 1
 
-    # Save the score for this round in the database
+    # Save the score and best location for this round in the database
     partie_id = session.get("partie_id")
     cursor = get_db().cursor()
     cursor.execute(
-        "UPDATE rounds SET fort_potentiel = ?, score = ? WHERE partie_id = ? AND round = ?",
-        (score_gained > 0, score_gained, partie_id, round_num))
+        "UPDATE rounds SET fort_potentiel = ?, score = ?, percentile_rank = ?, best_lat = ?, best_lon = ?, best_value = ? WHERE partie_id = ? AND round = ?",
+        (score_gained > 0, score_gained, percentile_rank, best_lat, best_lon, best_value, partie_id, round_num))
     get_db().commit()
 
     if session["round"] >= nb_rounds:
@@ -169,6 +174,10 @@ def game_progress():
             "total_score": total_score,
             "score_gained": score_gained,
             "value": value,
+            "percentile_rank": percentile_rank,
+            "best_lat": best_lat,
+            "best_lon": best_lon,
+            "best_value": best_value,
             "energy_type": energy_type,
             "rounds_played": nb_rounds
         }
@@ -180,6 +189,7 @@ def game_progress():
         session.pop("lon", None)
         session.pop("score", None)
         session.pop("energy_type", None)
+        session.pop("consecutive_wins", None)
     else:
         result = {
             "partie_ended": False,
@@ -187,7 +197,11 @@ def game_progress():
             "rounds_played": session["round"],
             "energy_type": energy_type,
             "score_gained": score_gained,
-            "value": value
+            "value": value,
+            "percentile_rank": percentile_rank,
+            "best_lat": best_lat,
+            "best_lon": best_lon,
+            "best_value": best_value,
         }
 
         # Update round info for the next round
@@ -197,19 +211,26 @@ def game_progress():
     return jsonify(result)
 
 
-def check_potentiel(lat, lon, lat_guess, lon_guess, energy_type) -> (int, float):
-
+def check_potentiel(lat, lon, lat_guess, lon_guess, energy_type):
+    # lat/lon = zone center
+    # lat_guess/lon_guess = user's guessed
     if energy_type == "solar":
-        value = solar_quiz(lat, lon)
-        if value > 1.6:
-            return 100, value
-        else:
-            return -20, value
+        data = data_solar
+        dataset = dataset_solar
     elif energy_type == "wind":
-        value = wind_quiz(lat, lon)
-        if value > 6:
-            return 100, value
-        else:
-            return -20, value
+        data = data_wind
+        dataset = dataset_wind
     else:
         raise ValueError("Invalid energy type")
+
+    try:
+        value = solar_quiz(lat_guess, lon_guess) if energy_type == "solar" else wind_quiz(lat_guess, lon_guess)
+    except Exception:
+        # Out-of-bounds click (e.g. edge of map) — treat as no energy potential
+        score, percentile_rank, best_lat, best_lon, best_value = compute_regional_score(
+            lat, lon, 0, data, dataset)
+        return 0, 0.0, percentile_rank, best_lat, best_lon, best_value
+
+    score, percentile_rank, best_lat, best_lon, best_value = compute_regional_score(
+        lat, lon, value, data, dataset)
+    return score, value, percentile_rank, best_lat, best_lon, best_value
