@@ -181,35 +181,6 @@ function Map({ children }: { children?: React.ReactNode }) {
                         />
                     )}
                 </Source>
-                <Source
-                    id="my-line"
-                    type="geojson"
-                    data={{
-                        type: "FeatureCollection",
-                        features: [
-                            {
-                                type: "Feature",
-                                properties: {},
-                                geometry: {
-                                    type: "LineString",
-                                    coordinates: [
-                                        [0, 46.71],
-                                        [10, 46.71],
-                                    ],
-                                },
-                            },
-                        ],
-                    }}
-                >
-                    <Layer
-                        id="drawing-route-layer"
-                        type="line"
-                        paint={{
-                            "line-color": "#ff0000",
-                            "line-width": 5,
-                        }}
-                    />
-                </Source>
                 {children}
             </MapLibre>
 

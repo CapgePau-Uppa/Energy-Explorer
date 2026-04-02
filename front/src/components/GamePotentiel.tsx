@@ -37,6 +37,8 @@ function Game({ children }: { children?: React.ReactNode }) {
     const [LastValue, setLastValue] = useState(0);
 
     const [PerfectPoint, setPerfectPoint] = useState<pinPosition | null>(null);
+    const [PercentileRank, setPercentileRank] = useState(0);
+    const [PerfectValue, setPerfectValue] = useState(0);
 
     let valueClicked = 0;
 
@@ -182,6 +184,8 @@ function Game({ children }: { children?: React.ReactNode }) {
             lat: validateRoundData.best_lat,
             lon: validateRoundData.best_lon,
         });
+        setPerfectValue(validateRoundData.best_value);
+        setPercentileRank(validateRoundData.percentile_rank);
 
         if (!validateRoundData.partie_ended) {
             setScore(validateRoundData.current_score);
@@ -480,6 +484,16 @@ function Game({ children }: { children?: React.ReactNode }) {
                     >
                         {LastScore} points {LastScore < 0 ? "perdus" : "gagnés"}{" "}
                         {LastScore === 200 ? "🎉 Combo 2x!" : ""}
+                    </p>
+                    <p className="text-xs text-black/60">
+                        Votre position faisait partie des{" "}
+                        {PercentileRank.toFixed(2)} % les plus optimales de la
+                        zone. L'endroit idéal pour placer{" "}
+                        {GameKind === "solar"
+                            ? "des panneaux solaires"
+                            : "une éolienne"}{" "}
+                        à proximité était à {PerfectValue.toFixed(2)}{" "}
+                        {GameKind === "solar" ? "kWh/m²/jour" : "m/s"}
                     </p>
 
                     <button
