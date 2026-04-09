@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useRef } from "react";
 import MapLibre, {
     Marker,
     Source,
@@ -13,8 +13,6 @@ export type GameStep =
     | { type: "welcome" }
     | { type: "start" }
     | { type: "round-select"; round: number }
-    | { type: "round-validation"; round: number }
-    | { type: "round-score"; round: number }
     | { type: "end" }
     | { type: "error"; message: string };
 
@@ -39,16 +37,17 @@ function Game({ children }: { children?: React.ReactNode }) {
     const [PerfectPoint, setPerfectPoint] = useState<pinPosition | null>(null);
     const [PercentileRank, setPercentileRank] = useState(0);
     const [PerfectValue, setPerfectValue] = useState(0);
+    const [FloatingScore, setFloatingScore] = useState<{
+        x: number;
+        y: number;
+        score: number;
+        fading: boolean;
+    } | null>(null);
 
-    let valueClicked = 0;
-
-    console.log(Score);
-    console.log(Step);
     const handleLoad = () => {
         const map = mapRef.current?.getMap();
 
         if (map) {
-            // Loop through all symbol layers to set French language
             map.getStyle().layers.forEach((layer) => {
                 if (layer.type === "symbol" && layer.layout?.["text-field"]) {
                     map.setLayoutProperty(layer.id, "text-field", [
@@ -138,28 +137,18 @@ function Game({ children }: { children?: React.ReactNode }) {
             duration: 2200,
         });
 
+        setCurrentPinPosition(null);
         setStep({ type: "round-select", round: createRoundData.round });
     };
 
-    const clickMapRound = (e: MapLayerMouseEvent) => {
-        console.log("Map clicked at: ", e.lngLat);
-        if (Step.type === "round-select" || Step.type === "round-validation") {
-            setCurrentPinPosition({
-                lat: e.lngLat.lat,
-                lon: e.lngLat.lng,
-            });
-        }
+    const clickMapRound = async (e: MapLayerMouseEvent) => {
+        if (Step.type !== "round-select" || Loading) return;
 
-        if (Step.type === "round-select") {
-            setStep({ type: "round-validation", round: Step.round });
-        }
-    };
-
-    const validateRoundClicked = async () => {
-        if (Step.type !== "round-validation" || !CurrentPinPosition) return;
-
+        const clickedPosition = { lat: e.lngLat.lat, lon: e.lngLat.lng };
+        setCurrentPinPosition(clickedPosition);
         setLoading(true);
-        const urlToFetch = `${import.meta.env.PUBLIC_BACKEND_SERVER}/quiz/game_progress?lat=${encodeURIComponent(CurrentPinPosition.lat)}&lon=${encodeURIComponent(CurrentPinPosition.lon)}`;
+
+        const urlToFetch = `${import.meta.env.PUBLIC_BACKEND_SERVER}/quiz/game_progress?lat=${encodeURIComponent(clickedPosition.lat)}&lon=${encodeURIComponent(clickedPosition.lon)}`;
 
         const validateRoundResponse = await fetch(urlToFetch, {
             credentials: "include",
@@ -174,32 +163,39 @@ function Game({ children }: { children?: React.ReactNode }) {
             });
             return;
         }
-        const validateRoundData = await validateRoundResponse.json();
-        console.log("Validate round response:", validateRoundData);
+        const data = await validateRoundResponse.json();
+        console.log("Validate round response:", data);
         setLoading(false);
 
-        setLastValue(validateRoundData.value);
+        setLastValue(data.value);
+        setPerfectPoint({ lat: data.best_lat, lon: data.best_lon });
+        setPerfectValue(data.best_value);
+        setPercentileRank(data.percentile_rank);
 
-        setPerfectPoint({
-            lat: validateRoundData.best_lat,
-            lon: validateRoundData.best_lon,
-        });
-        setPerfectValue(validateRoundData.best_value);
-        setPercentileRank(validateRoundData.percentile_rank);
+        const scoreGained: number = data.score_gained;
 
-        if (!validateRoundData.partie_ended) {
-            setScore(validateRoundData.current_score);
-            setLastScore(validateRoundData.score_gained);
-            setStep({ type: "round-score", round: Step.round });
+        setFloatingScore({ x: e.point.x, y: e.point.y, score: scoreGained, fading: false });
+        setTimeout(
+            () => setFloatingScore((prev) => (prev ? { ...prev, fading: true } : null)),
+            2500,
+        );
+
+        if (!data.partie_ended) {
+            setScore(data.current_score);
+            setLastScore(scoreGained);
+            setTimeout(() => {
+                setFloatingScore(null);
+                nextRoundClicked();
+            }, 3000);
         } else {
-            setScore(validateRoundData.total_score);
-            setLastScore(validateRoundData.score_gained);
-            setStep({ type: "end" });
+            setScore(data.total_score);
+            setLastScore(scoreGained);
+            setTimeout(() => {
+                setFloatingScore(null);
+                setStep({ type: "end" });
+            }, 3000);
         }
     };
-
-    console.log("CurrentPinPosition:", CurrentPinPosition);
-    console.log("PerfectPoint:", PerfectPoint);
 
     return (
         <div className="h-full">
@@ -212,7 +208,7 @@ function Game({ children }: { children?: React.ReactNode }) {
                 ref={mapRef}
                 onLoad={handleLoad}
                 style={{ width: "100%", height: "100%" }}
-                mapStyle="/map/style.json" // Set directly, not conditionally
+                mapStyle="/map/style.json"
                 initialViewState={{
                     latitude: 46.71,
                     longitude: 4,
@@ -221,75 +217,86 @@ function Game({ children }: { children?: React.ReactNode }) {
                     bearing: 0,
                 }}
                 onClick={clickMapRound}
-
-                //mapStyle="https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json"
             >
-                {(Step.type === "round-validation" ||
-                    Step.type === "end" ||
-                    Step.type === "round-score") &&
-                    CurrentPinPosition && (
-                        <Marker
-                            latitude={CurrentPinPosition.lat}
-                            longitude={CurrentPinPosition.lon}
-                            anchor="bottom"
-                        >
-                            <div className="w-6 h-6 bg-red-500 rounded-full border-2 border-white" />
-                        </Marker>
-                    )}
-
-                {(Step.type === "round-score" || Step.type === "end") && (
+                {Step.type === "end" && CurrentPinPosition && (
                     <Marker
-                        latitude={PerfectPoint?.lat || 0}
-                        longitude={PerfectPoint?.lon || 0}
+                        latitude={CurrentPinPosition.lat}
+                        longitude={CurrentPinPosition.lon}
+                        anchor="bottom"
+                    >
+                        <div className="w-6 h-6 bg-red-500 rounded-full border-2 border-white" />
+                    </Marker>
+                )}
+
+                {(Step.type === "end" || FloatingScore !== null) && PerfectPoint && (
+                    <Marker
+                        latitude={PerfectPoint.lat}
+                        longitude={PerfectPoint.lon}
                         anchor="bottom"
                     >
                         <div className="w-6 h-6 bg-blue-500 rounded-full border-2 border-white" />
                     </Marker>
                 )}
-                {(Step.type === "round-score" || Step.type === "end") &&
-                    GameKind === "solar" && (
-                        <Source
+
+                {(Step.type === "end" || (FloatingScore !== null && !FloatingScore.fading)) && GameKind === "solar" && (
+                    <Source
+                        type="raster"
+                        tiles={[
+                            import.meta.env.PUBLIC_SOLAR_TILES ||
+                                "https://cdn.julienc.me/ter/globalwindsolar/{z}/{x}/{y}.png",
+                        ]}
+                    >
+                        <Layer
+                            id="raster-layer"
                             type="raster"
-                            tiles={[
-                                import.meta.env.PUBLIC_SOLAR_TILES ||
-                                    "https://cdn.julienc.me/ter/globalwindsolar/{z}/{x}/{y}.png",
-                            ]}
-                        >
-                            <Layer
-                                id="raster-layer"
-                                type="raster"
-                                paint={{
-                                    "raster-opacity": 0.6,
-                                }}
-                            />
-                        </Source>
-                    )}
-                {(Step.type === "round-score" || Step.type === "end") &&
-                    GameKind === "wind" && (
-                        <Source
+                            paint={{ "raster-opacity": 0.6 }}
+                        />
+                    </Source>
+                )}
+                {(Step.type === "end" || (FloatingScore !== null && !FloatingScore.fading)) && GameKind === "wind" && (
+                    <Source
+                        type="raster"
+                        tiles={[
+                            import.meta.env.PUBLIC_WIND_TILES ||
+                                "https://cdn1.julienc.me/energy-explorer/wind-tiles2/{z}/{x}/{y}.png",
+                        ]}
+                    >
+                        <Layer
+                            id="raster-layer"
                             type="raster"
-                            tiles={[
-                                import.meta.env.PUBLIC_WIND_TILES ||
-                                    "https://cdn1.julienc.me/energy-explorer/wind-tiles2/{z}/{x}/{y}.png",
-                            ]}
-                        >
-                            <Layer
-                                id="raster-layer"
-                                type="raster"
-                                paint={{
-                                    "raster-opacity": 0.6,
-                                }}
-                            />
-                        </Source>
-                    )}
+                            paint={{ "raster-opacity": 0.6 }}
+                        />
+                    </Source>
+                )}
 
                 {children}
             </MapLibre>
+
+            {FloatingScore && (
+                <div
+                    className={clsx(
+                        "absolute pointer-events-none z-30 -translate-x-1/2 -translate-y-full",
+                        "bg-white rounded-lg px-3 py-1 shadow-lg font-bold text-lg",
+                        "transition-opacity duration-500",
+                        {
+                            "opacity-100": !FloatingScore.fading,
+                            "opacity-0": FloatingScore.fading,
+                            "text-green-600": FloatingScore.score > 0,
+                            "text-red-600": FloatingScore.score <= 0,
+                        },
+                    )}
+                    style={{ left: FloatingScore.x, top: FloatingScore.y }}
+                >
+                    {FloatingScore.score > 0 ? "+" : ""}
+                    {FloatingScore.score} pts
+                </div>
+            )}
+
             <div
                 id="overlay-container"
                 className="absolute bottom-0 left-0 w-full h-full flex items-center justify-center z-20 transition-all duration-2000 pointer-events-none"
             >
-                {Step.type.startsWith("round-") && (
+                {Step.type === "round-select" && (
                     <div
                         id="score"
                         className="absolute bottom-4 left-4 bg-white/60 bg-background-blur rounded-lg p-6"
@@ -418,14 +425,10 @@ function Game({ children }: { children?: React.ReactNode }) {
                 <div
                     id="set-pin-screen"
                     className={clsx(
-                        "p-10 bg-white/60 backdrop-blur-xs rounded-lg transition-opacity duration-500 flex flex-col md:w-2xl mx-4 self-start justify-self-start ml-12 mt-12 pointer-events-auto",
+                        "p-10 bg-white/60 backdrop-blur-xs rounded-lg transition-opacity duration-500 flex flex-col md:w-2xl mx-4 self-start justify-self-start ml-12 mt-12 pointer-events-none",
                         {
-                            hidden:
-                                Step.type !== "round-select" &&
-                                Step.type !== "round-validation",
-                            flex:
-                                Step.type === "round-select" ||
-                                Step.type === "round-validation",
+                            hidden: Step.type !== "round-select",
+                            flex: Step.type === "round-select",
                         },
                     )}
                 >
@@ -435,95 +438,15 @@ function Game({ children }: { children?: React.ReactNode }) {
                             : "Place une éolienne 📌"}
                     </h1>
                     <p className="text-sm md:text-base   text-black/60">
-                        {/* Sur cette zone, où penses-tu qu’il serait le plus
-                        judicieux de placer des panneaux solaires ? 🤔 */}
                         {GameKind === "solar"
-                            ? "Sur cette zone, où penses-tu qu’il serait le plus judicieux de placer des panneaux solaires ? 🤔"
-                            : "Sur cette zone, où penses-tu qu’il serait le plus judicieux de placer une éolienne ? 🤔"}
+                            ? "Sur cette zone, où penses-tu qu'il serait le plus judicieux de placer des panneaux solaires ? 🤔"
+                            : "Sur cette zone, où penses-tu qu'il serait le plus judicieux de placer une éolienne ? 🤔"}
                     </p>
-
-                    <button
-                        className={clsx(
-                            "mt-4 w-full py-2 bg-game-button disabled:bg-game-button/40 disabled:cursor-not-allowed text-white rounded hover:bg-game-button-hover transition-colors cursor-pointer",
-                            {
-                                "animate-bounce": Loading,
-                            },
-                        )}
-                        onClick={validateRoundClicked}
-                        disabled={Step.type === "round-select" || Loading}
-                    >
-                        Valider mon choix ✅
-                    </button>
-                </div>
-                <div
-                    id="score-screen"
-                    className={clsx(
-                        "p-10 bg-white/60 backdrop-blur-xs rounded-lg transition-opacity duration-500 flex flex-col md:w-2xl mx-4 pointer-events-auto",
-                        {
-                            hidden: Step.type !== "round-score",
-                            flex: Step.type === "round-score",
-                        },
+                    {Loading && (
+                        <p className="mt-3 text-xs text-black/40 animate-pulse">
+                            Calcul en cours…
+                        </p>
                     )}
-                >
-                    <h1 className="text-lg md:text-2xl pt-8">
-                        {LastScore > 20
-                            ? "T'as réussi 👏"
-                            : "Presque, tu feras mieux la prochaine fois 😬"}
-                    </h1>
-                    <p className="text-sm md:text-base   text-black/60 mb-8">
-                        {LastScore > 20
-                            ? "Ta position était très bonne, tu as gagné pas mal de points !"
-                            : "Ta position n'était pas optimale, tu n'as pas gagné beaucoup de points cette fois-ci."}
-                    </p>
-
-                    <p
-                        className={clsx("text-lg font-semibold", {
-                            "text-green-600": LastScore > 20,
-                            "text-red-600": LastScore <= 20,
-                        })}
-                    >
-                        {LastScore} points {LastScore < 0 ? "perdus" : "gagnés"}{" "}
-                        {LastScore === 200 ? "🎉 Combo 2x!" : ""}
-                    </p>
-                    <p className="text-xs text-black/60">
-                        Votre position faisait partie des{" "}
-                        {PercentileRank.toFixed(2)} % les plus optimales de la
-                        zone. L'endroit idéal pour placer{" "}
-                        {GameKind === "solar"
-                            ? "des panneaux solaires"
-                            : "une éolienne"}{" "}
-                        à proximité était à {PerfectValue.toFixed(2)}{" "}
-                        {GameKind === "solar" ? "kWh/m²/jour" : "m/s"}
-                    </p>
-
-                    <button
-                        className={clsx(
-                            "mt-4 w-full py-2 bg-game-button disabled:bg-game-button/40 disabled:cursor-not-allowed text-white rounded hover:bg-game-button-hover transition-colors cursor-pointer",
-                            {
-                                "animate-bounce": Loading,
-                            },
-                        )}
-                        onClick={nextRoundClicked}
-                        disabled={Loading}
-                    >
-                        Suivant
-                    </button>
-                    <p className="text-sm text-black/60 mt-4">
-                        À l'endroit où tu as cliqué, le potentiel énergétique
-                        est de {LastValue.toFixed(2)}{" "}
-                        {GameKind === "solar" ? "kWh/m²/jour. " : "m/s. "}.{" "}
-                        <br />
-                        {GameKind === "solar" // Panneau solaire 1.6M2, rendement de 16%, ampoule 7W
-                            ? `Ça fait ${(LastValue * 1.6 * 0.16).toFixed(2)} kWh par jour, soit de quoi faire fonctionner une ampoule de 7W pendant ${(
-                                  (LastValue * 1.6 * 0.16) /
-                                  0.007
-                              ).toFixed(2)} heures !`
-                            : `C'est plutôt ${
-                                  LastValue > 4
-                                      ? "élevé, un bon emplacement pour une éolienne !"
-                                      : "faible, une éolienne fonctionne à partir de 3-4 m/s, donc ce n'est pas un emplacement idéal."
-                              }`}
-                    </p>
                 </div>
                 <div
                     id="end-screen"
@@ -567,16 +490,26 @@ function Game({ children }: { children?: React.ReactNode }) {
                     >
                         {Score} points
                     </p>
-                    <p className={clsx("text-xs text-black/50 mb-8", {})}>
+                    <p className={clsx("text-xs text-black/50 mb-8")}>
                         {LastScore} points {LastScore < 0 ? "perdus" : "gagnés"}{" "}
                         au dernier round{" "}
                         {LastScore === 200 ? "🎉 Combo 2x!" : ""}
                     </p>
 
                     <p className="text-sm md:text-base   text-black/60">
-                        Bravo d’être arrivé jusqu’ici ! N’hésite pas à refaire
+                        Bravo d'être arrivé jusqu'ici ! N'hésite pas à refaire
                         le quiz pour améliorer ton score, et surtout à le
                         partager à tes ami(e)s pour les défier 🏆
+                    </p>
+
+                    <p className="text-xs text-black/60 mt-4">
+                        À l'endroit où tu as cliqué au dernier round, le
+                        potentiel énergétique est de {LastValue.toFixed(2)}{" "}
+                        {GameKind === "solar" ? "kWh/m²/jour" : "m/s"}.
+                        L'endroit idéal à proximité était à{" "}
+                        {PerfectValue.toFixed(2)}{" "}
+                        {GameKind === "solar" ? "kWh/m²/jour" : "m/s"} (top{" "}
+                        {PercentileRank.toFixed(2)} %).
                     </p>
 
                     <button

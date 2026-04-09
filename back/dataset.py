@@ -13,7 +13,7 @@ data_wind = dataset_wind.read(1)
 SOLAR_MIN = 1.6
 WIND_MIN = 2.0
 
-SCORE_WINDOW_DEG = 6  # ±10 degree neighborhood for regional scoring
+SCORE_WINDOW_DEG = 5.5  # ±10 degree neighborhood for regional scoring
 
 valid_indices_solar = np.argwhere(data_solar > SOLAR_MIN)
 valid_indices_wind = np.argwhere(data_wind > WIND_MIN)
