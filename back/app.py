@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify, session
 from game import quiz_bp
+from simulator import simulator_bp, init_db
 from dataset import dataset_solar, data_solar, dataset_wind, data_wind
-import sqlite3
 import flask_cors
 import os
 
@@ -9,6 +9,9 @@ app = Flask(__name__)
 flask_cors.CORS(app, supports_credentials=True)
 app.secret_key = "your_secret_key"
 app.register_blueprint(quiz_bp, url_prefix="/quiz")
+app.register_blueprint(simulator_bp, url_prefix="/simulator")
+
+init_db()
 # required for cross-origin fetch
 app.config["SESSION_COOKIE_SAMESITE"] = "None"
 app.config["SESSION_COOKIE_SECURE"] = os.getenv(
