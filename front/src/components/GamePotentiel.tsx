@@ -1,4 +1,6 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
+import confetti from "canvas-confetti";
+import { GameToastStack, type Toast, type ToastKind } from "./GameToast";
 import MapLibre, {
     Marker,
     Source,
@@ -33,6 +35,52 @@ function Game({ children }: { children?: React.ReactNode }) {
     const [CurrentPinPosition, setCurrentPinPosition] =
         useState<pinPosition | null>(null);
     const [LastValue, setLastValue] = useState(0);
+
+    const toastIdRef = useRef(0);
+    const [Toasts, setToasts] = useState<Toast[]>([]);
+
+    const [DisplayedScore, setDisplayedScore] = useState(0);
+    const displayedScoreRef = useRef(0);
+    const animFrameRef = useRef<number>(0);
+
+    useEffect(() => {
+        const start = displayedScoreRef.current;
+        const end = Score;
+        if (start === end) return;
+
+        const duration = 800;
+        const startTime = performance.now();
+        cancelAnimationFrame(animFrameRef.current);
+
+        const animate = (now: number) => {
+            const t = Math.min((now - startTime) / duration, 1);
+            const eased = 1 - (1 - t) ** 2;
+            const current = Math.round(start + (end - start) * eased);
+            displayedScoreRef.current = current;
+            setDisplayedScore(current);
+            if (t < 1) animFrameRef.current = requestAnimationFrame(animate);
+        };
+
+        animFrameRef.current = requestAnimationFrame(animate);
+        return () => cancelAnimationFrame(animFrameRef.current);
+    }, [Score]);
+
+    const TOAST_EXIT_DURATION = 280; // matches toast-exit CSS animation duration
+
+    const pushToast = (kind: ToastKind, message: string, duration = 2500) => {
+        const id = ++toastIdRef.current;
+        setToasts((prev) => [...prev, { id, kind, message, exiting: false }]);
+
+        setTimeout(() => {
+            setToasts((prev) =>
+                prev.map((t) => (t.id === id ? { ...t, exiting: true } : t)),
+            );
+
+            setTimeout(() => {
+                setToasts((prev) => prev.filter((t) => t.id !== id));
+            }, TOAST_EXIT_DURATION);
+        }, duration);
+    };
 
     const [PerfectPoint, setPerfectPoint] = useState<pinPosition | null>(null);
     const [PercentileRank, setPercentileRank] = useState(0);
@@ -174,22 +222,49 @@ function Game({ children }: { children?: React.ReactNode }) {
 
         const scoreGained: number = data.score_gained;
 
-        setFloatingScore({ x: e.point.x, y: e.point.y, score: scoreGained, fading: false });
+        setFloatingScore({
+            x: e.point.x,
+            y: e.point.y,
+            score: scoreGained,
+            fading: false,
+        });
         setTimeout(
-            () => setFloatingScore((prev) => (prev ? { ...prev, fading: true } : null)),
-            2500,
+            () =>
+                setFloatingScore((prev) =>
+                    prev ? { ...prev, fading: true } : null,
+                ),
+            4000,
         );
 
+        if (scoreGained === 200) {
+            pushToast("combo", `Combo 2x! ${scoreGained} points obtenus! 🔥`);
+            confetti({ particleCount: 380, spread: 80, origin: { y: 0.55 } });
+        } else if (scoreGained > 50) {
+            pushToast("success", `🎯 Score obtenu: ${scoreGained}`);
+            confetti({ particleCount: 120, spread: 60, origin: { y: 0.55 } });
+        } else {
+            pushToast("bad-score", `😬 Score obtenu: ${scoreGained}`);
+        }
         if (!data.partie_ended) {
             setScore(data.current_score);
             setLastScore(scoreGained);
+            pushToast("next-round", "Prochain round dans 3 secondes");
             setTimeout(() => {
                 setFloatingScore(null);
                 nextRoundClicked();
-            }, 3000);
+            }, 4000);
         } else {
             setScore(data.total_score);
             setLastScore(scoreGained);
+            if (data.total_score > 250) {
+                setTimeout(() => {
+                    confetti({
+                        particleCount: 180,
+                        spread: 80,
+                        origin: { y: 0.55 },
+                    });
+                }, 500);
+            }
             setTimeout(() => {
                 setFloatingScore(null);
                 setStep({ type: "end" });
@@ -199,6 +274,7 @@ function Game({ children }: { children?: React.ReactNode }) {
 
     return (
         <div className="h-full">
+            <GameToastStack toasts={Toasts} />
             <MapLibre
                 attributionControl={{
                     customAttribution:
@@ -218,56 +294,70 @@ function Game({ children }: { children?: React.ReactNode }) {
                 }}
                 onClick={clickMapRound}
             >
-                {Step.type === "end" && CurrentPinPosition && (
-                    <Marker
-                        latitude={CurrentPinPosition.lat}
-                        longitude={CurrentPinPosition.lon}
-                        anchor="bottom"
-                    >
-                        <div className="w-6 h-6 bg-red-500 rounded-full border-2 border-white" />
-                    </Marker>
-                )}
+                {(Step.type === "end" || FloatingScore !== null) &&
+                    PerfectPoint && (
+                        <Marker
+                            latitude={PerfectPoint.lat}
+                            longitude={PerfectPoint.lon}
+                            anchor="bottom"
+                        >
+                            <div
+                                key={`${PerfectPoint.lat},${PerfectPoint.lon}`}
+                                className="flex flex-col items-center -mt-10 animate-pin-drop"
+                            >
+                                <p className="text-xs font-bold text-white">
+                                    Meilleur choix
+                                </p>
+                                <svg
+                                    className="w-12 h-12 text-blue-500"
+                                    viewBox="0 0 24 24"
+                                    xmlns="http://www.w3.org/2000/svg"
+                                >
+                                    <path
+                                        fill="currentColor"
+                                        fill-rule="evenodd"
+                                        d="M12 2c-4.418 0-8 4.003-8 8.5c0 4.462 2.553 9.312 6.537 11.174a3.45 3.45 0 0 0 2.926 0C17.447 19.812 20 14.962 20 10.5C20 6.003 16.418 2 12 2m0 10a2 2 0 1 0 0-4a2 2 0 0 0 0 4"
+                                        clip-rule="evenodd"
+                                    />
+                                </svg>
+                            </div>
+                        </Marker>
+                    )}
 
-                {(Step.type === "end" || FloatingScore !== null) && PerfectPoint && (
-                    <Marker
-                        latitude={PerfectPoint.lat}
-                        longitude={PerfectPoint.lon}
-                        anchor="bottom"
-                    >
-                        <div className="w-6 h-6 bg-blue-500 rounded-full border-2 border-white" />
-                    </Marker>
-                )}
-
-                {(Step.type === "end" || (FloatingScore !== null && !FloatingScore.fading)) && GameKind === "solar" && (
-                    <Source
-                        type="raster"
-                        tiles={[
-                            import.meta.env.PUBLIC_SOLAR_TILES ||
-                                "https://cdn.julienc.me/ter/globalwindsolar/{z}/{x}/{y}.png",
-                        ]}
-                    >
-                        <Layer
-                            id="raster-layer"
+                {(Step.type === "end" ||
+                    (FloatingScore !== null && !FloatingScore.fading)) &&
+                    GameKind === "solar" && (
+                        <Source
                             type="raster"
-                            paint={{ "raster-opacity": 0.6 }}
-                        />
-                    </Source>
-                )}
-                {(Step.type === "end" || (FloatingScore !== null && !FloatingScore.fading)) && GameKind === "wind" && (
-                    <Source
-                        type="raster"
-                        tiles={[
-                            import.meta.env.PUBLIC_WIND_TILES ||
-                                "https://cdn1.julienc.me/energy-explorer/wind-tiles2/{z}/{x}/{y}.png",
-                        ]}
-                    >
-                        <Layer
-                            id="raster-layer"
+                            tiles={[
+                                import.meta.env.PUBLIC_SOLAR_TILES ||
+                                    "https://cdn.julienc.me/ter/globalwindsolar/{z}/{x}/{y}.png",
+                            ]}
+                        >
+                            <Layer
+                                id="raster-layer"
+                                type="raster"
+                                paint={{ "raster-opacity": 0.6 }}
+                            />
+                        </Source>
+                    )}
+                {(Step.type === "end" ||
+                    (FloatingScore !== null && !FloatingScore.fading)) &&
+                    GameKind === "wind" && (
+                        <Source
                             type="raster"
-                            paint={{ "raster-opacity": 0.6 }}
-                        />
-                    </Source>
-                )}
+                            tiles={[
+                                import.meta.env.PUBLIC_WIND_TILES ||
+                                    "https://cdn1.julienc.me/energy-explorer/wind-tiles2/{z}/{x}/{y}.png",
+                            ]}
+                        >
+                            <Layer
+                                id="raster-layer"
+                                type="raster"
+                                paint={{ "raster-opacity": 0.6 }}
+                            />
+                        </Source>
+                    )}
 
                 {children}
             </MapLibre>
@@ -308,7 +398,7 @@ function Game({ children }: { children?: React.ReactNode }) {
                                 "text-red-600": Score <= 0,
                             })}
                         >
-                            {Score} points
+                            {DisplayedScore} points
                         </p>
                     </div>
                 )}
@@ -422,32 +512,7 @@ function Game({ children }: { children?: React.ReactNode }) {
                         </button>
                     </div>
                 </div>
-                <div
-                    id="set-pin-screen"
-                    className={clsx(
-                        "p-10 bg-white/60 backdrop-blur-xs rounded-lg transition-opacity duration-500 flex flex-col md:w-2xl mx-4 self-start justify-self-start ml-12 mt-12 pointer-events-none",
-                        {
-                            hidden: Step.type !== "round-select",
-                            flex: Step.type === "round-select",
-                        },
-                    )}
-                >
-                    <h1 className="text-lg md:text-2xl">
-                        {GameKind === "solar"
-                            ? "Place un panneau solaire 📌"
-                            : "Place une éolienne 📌"}
-                    </h1>
-                    <p className="text-sm md:text-base   text-black/60">
-                        {GameKind === "solar"
-                            ? "Sur cette zone, où penses-tu qu'il serait le plus judicieux de placer des panneaux solaires ? 🤔"
-                            : "Sur cette zone, où penses-tu qu'il serait le plus judicieux de placer une éolienne ? 🤔"}
-                    </p>
-                    {Loading && (
-                        <p className="mt-3 text-xs text-black/40 animate-pulse">
-                            Calcul en cours…
-                        </p>
-                    )}
-                </div>
+
                 <div
                     id="end-screen"
                     className={clsx(
