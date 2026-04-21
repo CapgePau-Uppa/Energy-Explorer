@@ -1,0 +1,20 @@
+---
+import "../styles/global.css";
+import SimulatorEnergy from "../components/Simulator";
+---
+
+<html lang="fr">
+    <head>
+        <meta charset="utf-8" />
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        <link rel="icon" href="/favicon.ico" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="generator" content={Astro.generator} />
+        <title>Simulateur - Energy Explorer</title>
+    </head>
+    <body class="">
+        <div class="h-screen w-screen">
+            <SimulatorEnergy client:only />
+        </div>
+    </body>
+</html>

@@ -5,6 +5,142 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { Protocol } from "pmtiles";
 import clsx from "clsx";
 import { getWindValue, getSolarValue } from "./mapData";
+import type { ProjectListResponse } from "./types";
+
+function ProjectList() {
+    const [projects, setProjects] = useState<ProjectListResponse>([]);
+    const [loadingProjects, setLoadingProjects] = useState(true);
+    const [Loading, setLoading] = useState(false);
+    const [ProjectName, setProjectName] = useState("");
+
+    useEffect(() => {
+        fetchProjects().then((data) => {
+            setProjects(data);
+            setLoadingProjects(false);
+        });
+    }, []);
+
+    if (loadingProjects) {
+        return (
+            <p className="text-sm text-gray-500">Chargement des projets...</p>
+        );
+    }
+
+    return (
+        <div className="max-h-60 overflow-y-auto">
+            {projects.length === 0 ? (
+                <p className="text-sm text-gray-500">Aucun projet trouvé.</p>
+            ) : (
+                <div className="flex flex-col text-sm gap-2">
+                    {projects.map((project) => (
+                        <a
+                            key={project.id}
+                            href={`/simulator?id=${project.id}`}
+                            className="p-2 rounded-md bg-white/40 hover:bg-white/60 transition-colors"
+                        >
+                            <h3 className="font-medium hover:underline">
+                                {project.name}
+                            </h3>
+                            <p className="text-xs text-gray-500">
+                                Créé le{" "}
+                                {new Date(
+                                    project.created_at,
+                                ).toLocaleDateString("fr-FR", {
+                                    year: "numeric",
+                                    month: "long",
+                                    day: "numeric",
+                                })}
+                            </p>
+                        </a>
+                    ))}
+                </div>
+            )}
+
+            <form
+                className="mt-4 flex gap-2"
+                onSubmit={(e) => {
+                    e.preventDefault();
+                    setLoading(true);
+
+                    const body = {
+                        name: ProjectName.trim(),
+                    };
+
+                    console.log("Creating project with name:", body.name);
+
+                    fetch(
+                        `${import.meta.env.PUBLIC_BACKEND_SERVER}/simulator/project`,
+                        {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                            },
+                            credentials: "include",
+                            body: JSON.stringify(body),
+                        },
+                    )
+                        .then((response) => {
+                            if (response.ok) {
+                                return response.json();
+                            } else {
+                                throw new Error(
+                                    `Failed to create project: ${response.statusText}`,
+                                );
+                            }
+                        })
+                        .then((data) => {
+                            console.log("Project created successfully:", data);
+                            window.location.href = `/simulator?id=${data.id}`;
+                        })
+                        .catch((error) => {
+                            console.error("Error creating project:", error);
+                            alert(
+                                "Une erreur est survenue lors de la création du projet.",
+                            );
+                            setLoading(false);
+                        });
+                }}
+            >
+                <div className="flex flex-col w-full">
+                    <label
+                        htmlFor="project-name"
+                        className="mb-1 text-xs font-semibold text-gray-700"
+                    >
+                        Nouveau projet
+                    </label>
+                    <input
+                        type="text"
+                        placeholder="Nom du projet"
+                        className="flex-1 px-3 py-2 text-sm bg-white/40 rounded-md focus:outline-none focus:bg-white/60 transition-colors w-full"
+                        value={ProjectName}
+                        onChange={(e) => setProjectName(e.target.value)}
+                    />
+                </div>
+                <button
+                    type="submit"
+                    className="max-h-fit self-end flex items-center justify-center bg-black disabled:bg-gray-700 disabled:cursor-not-allowed text-white px-4 py-2 mt-2 text-sm rounded-lg transition-all"
+                    disabled={Loading || ProjectName.trim() === ""}
+                >
+                    Ajouter
+                </button>
+            </form>
+        </div>
+    );
+}
+
+const fetchProjects: () => Promise<ProjectListResponse> = async () => {
+    const response = await fetch(
+        `${import.meta.env.PUBLIC_BACKEND_SERVER}/simulator/projects`,
+        { credentials: "include" },
+    );
+    if (response.ok) {
+        const data = await response.json();
+        return data as ProjectListResponse;
+    } else {
+        console.error("Failed to fetch projects:", response.statusText);
+        return [];
+    }
+};
 
 function Map({ children }: { children?: React.ReactNode }) {
     const mapRef = useRef<MapRef>(null);
@@ -14,7 +150,6 @@ function Map({ children }: { children?: React.ReactNode }) {
 
     const [asideFolded, setAsideFolded] = useState(true);
     const [searchValue, setSearchValue] = useState("");
-
     const [viewState, setViewState] = useState({
         longitude: 0,
         latitude: 46.71,
@@ -186,10 +321,10 @@ function Map({ children }: { children?: React.ReactNode }) {
 
             <aside
                 className={clsx(
-                    "flex flex-col transition-all absolute top-6 left-6 bg-white/60 p-8 rounded-lg backdrop-blur-xs md:h-[95vh] w-[90vw] sm:max-w-sm",
+                    "flex flex-col transition-all absolute top-6 left-6 bg-white/60 p-8 rounded-lg backdrop-blur-xs md:h-[95vh] md:overflow-y-auto w-[90vw] sm:max-w-sm",
                     {
                         "h-26 md:block overflow-hidden": asideFolded,
-                        "h-[95vh]": !asideFolded,
+                        "h-[95vh] overflow-y-auto": !asideFolded,
                     },
                 )}
             >
@@ -303,6 +438,11 @@ function Map({ children }: { children?: React.ReactNode }) {
                 >
                     Jouer au quiz
                 </a>
+
+                <h2 className="mt-6 mb-1 text-lg font-semibold">
+                    Projets d'énergie 🌱
+                </h2>
+                <ProjectList />
             </aside>
 
             {SelectedLayer === "solar" && (
@@ -325,7 +465,7 @@ function Map({ children }: { children?: React.ReactNode }) {
             )}
             <aside
                 className={clsx(
-                    "grid grid-cols-2 transition-all absolute bottom-16 sm:bottom-12 right-6 gap-1",
+                    "grid grid-cols-2 transition-all absolute bottom-16 sm:bottom-12 right-6 gap-1 overflow-y-auto",
                 )}
             >
                 <div
