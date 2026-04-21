@@ -22,7 +22,8 @@
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-map-gl": "^8.1.0",
-    "tailwindcss": "^4.1.18"
+    "tailwindcss": "^4.1.18",
+    "web-haptics": "^0.0.6"
   },
   "devDependencies": {
     "@types/canvas-confetti": "^1.9.0"

@@ -10,6 +10,7 @@ import MapLibre, {
 } from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 import clsx from "clsx";
+import { useWebHaptics } from "web-haptics/react";
 
 export type GameStep =
     | { type: "welcome" }
@@ -42,6 +43,25 @@ function Game({ children }: { children?: React.ReactNode }) {
     const [DisplayedScore, setDisplayedScore] = useState(0);
     const displayedScoreRef = useRef(0);
     const animFrameRef = useRef<number>(0);
+
+    const { trigger } = useWebHaptics();
+
+    const successVibration = () => {
+        trigger([{ duration: 30 }, { delay: 60, duration: 40, intensity: 1 }]);
+    };
+
+    const errorVibration = () => {
+        trigger([
+            { duration: 40, intensity: 0.7 },
+            { delay: 40, duration: 40, intensity: 0.7 },
+            { delay: 40, duration: 40, intensity: 0.9 },
+            { delay: 40, duration: 50, intensity: 0.6 },
+        ]);
+    };
+
+    const comboVibration = () => {
+        trigger([{ duration: 1000 }], { intensity: 1 });
+    };
 
     useEffect(() => {
         const start = displayedScoreRef.current;
@@ -239,11 +259,14 @@ function Game({ children }: { children?: React.ReactNode }) {
         if (scoreGained === 200) {
             pushToast("combo", `Combo 2x! ${scoreGained} points obtenus! 🔥`);
             confetti({ particleCount: 380, spread: 80, origin: { y: 0.55 } });
+            comboVibration();
         } else if (scoreGained > 50) {
             pushToast("success", `🎯 Score obtenu: ${scoreGained}`);
             confetti({ particleCount: 120, spread: 60, origin: { y: 0.55 } });
+            successVibration();
         } else {
             pushToast("bad-score", `😬 Score obtenu: ${scoreGained}`);
+            errorVibration();
         }
         if (!data.partie_ended) {
             setScore(data.current_score);
