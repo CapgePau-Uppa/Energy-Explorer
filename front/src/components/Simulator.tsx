@@ -216,9 +216,9 @@ function SimulatorEnergy({ children }: { children?: React.ReactNode }) {
             </MapLibre>
             <aside
                 className={clsx(
-                    "flex flex-col transition-all absolute top-6 left-6 bg-white/60 p-8 rounded-lg backdrop-blur-xs md:h-[95vh] md:overflow-y-auto w-[90vw] sm:max-w-sm",
+                    "flex flex-col transition-all absolute top-6 left-6 bg-white/60 p-8 rounded-lg backdrop-blur-xs  w-[90vw] sm:max-w-sm",
                     {
-                        "h-26 md:block overflow-hidden": asideFolded,
+                        "h-30 md:block overflow-hidden": asideFolded,
                         "h-[95vh] overflow-y-auto": !asideFolded,
                     },
                 )}
@@ -229,28 +229,27 @@ function SimulatorEnergy({ children }: { children?: React.ReactNode }) {
                     </a>
 
                     <svg
-                        viewBox="0 0 48 48"
+                        viewBox="0 0 24 24"
                         xmlns="http://www.w3.org/2000/svg"
                         className={clsx(
-                            "h-6 w-6 text-black/50 hover:cursor-pointer md:hidden",
-                            {},
+                            "h-6 w-6 text-black/50 hover:cursor-pointer",
+                            {
+                                "rotate-180": !asideFolded,
+                            },
                         )}
                         onClick={() => setAsideFolded(!asideFolded)}
                     >
                         <path
-                            fill="none"
-                            stroke="currentColor"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="4"
-                            d="M7.95 11.95h32m-32 12h32m-32 12h32"
+                            fill="currentColor"
+                            fill-rule="evenodd"
+                            d="m6 7l6 6l6-6l2 2l-8 8l-8-8z"
                         />
                     </svg>
                 </div>
                 <img
                     src="/image/logo-v5.svg"
                     alt="Energy Explorer Logo"
-                    className="mb-2 h-12"
+                    className="mb-4 h-12 transition-all"
                 />
                 <h1 className="text-2xl font-bold mb-1">{Data.name}</h1>
                 <p className="text-black/80 text-xs">
