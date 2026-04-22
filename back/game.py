@@ -1,3 +1,5 @@
+import math
+
 import numpy as np
 from flask import Blueprint, request, jsonify, session, g
 from dataset import (dataset_solar, dataset_wind, data_solar, data_wind,
@@ -173,7 +175,7 @@ def game_progress():
             "partie_id": partie_id,
             "total_score": total_score,
             "score_gained": score_gained,
-            "value": value,
+            "value": 0 if math.isnan(value) else value,
             "percentile_rank": percentile_rank,
             "best_lat": best_lat,
             "best_lon": best_lon,
@@ -197,7 +199,7 @@ def game_progress():
             "rounds_played": session["round"],
             "energy_type": energy_type,
             "score_gained": score_gained,
-            "value": value,
+            "value": 0 if math.isnan(value) else value,
             "percentile_rank": percentile_rank,
             "best_lat": best_lat,
             "best_lon": best_lon,
@@ -224,7 +226,8 @@ def check_potentiel(lat, lon, lat_guess, lon_guess, energy_type):
         raise ValueError("Invalid energy type")
 
     try:
-        value = solar_quiz(lat_guess, lon_guess) if energy_type == "solar" else wind_quiz(lat_guess, lon_guess)
+        value = solar_quiz(lat_guess, lon_guess) if energy_type == "solar" else wind_quiz(
+            lat_guess, lon_guess)
     except Exception:
         # Out-of-bounds click (e.g. edge of map) — treat as no energy potential
         score, percentile_rank, best_lat, best_lon, best_value = compute_regional_score(

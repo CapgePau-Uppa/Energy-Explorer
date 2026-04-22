@@ -26,6 +26,38 @@ type pinPosition = {
     lon: number;
 };
 
+const solarBoundaries = {
+    minLon: -180.0,
+    maxLon: 180.0,
+    minLat: -60.0,
+    maxLat: 65.0,
+};
+
+const windBoundaries = {
+    minLon: -180.00125,
+    maxLon: 179.99875,
+    minLat: -64.00125,
+    maxLat: 79.99875,
+};
+
+function isInsideSolarBoundaries(position: pinPosition) {
+    return (
+        position.lon >= solarBoundaries.minLon &&
+        position.lon <= solarBoundaries.maxLon &&
+        position.lat >= solarBoundaries.minLat &&
+        position.lat <= solarBoundaries.maxLat
+    );
+}
+
+function isInsideWindBoundaries(position: pinPosition) {
+    return (
+        position.lon >= windBoundaries.minLon &&
+        position.lon <= windBoundaries.maxLon &&
+        position.lat >= windBoundaries.minLat &&
+        position.lat <= windBoundaries.maxLat
+    );
+}
+
 function Game({ children }: { children?: React.ReactNode }) {
     const mapRef = useRef<MapRef>(null);
     const [Score, setScore] = useState(0);
@@ -213,6 +245,29 @@ function Game({ children }: { children?: React.ReactNode }) {
         if (Step.type !== "round-select" || Loading) return;
 
         const clickedPosition = { lat: e.lngLat.lat, lon: e.lngLat.lng };
+
+        if (GameKind === "solar" && !isInsideSolarBoundaries(clickedPosition)) {
+            console.error("Clicked position is outside solar boundaries");
+            pushToast(
+                "bad-score",
+                "Ce point est en dehors de la zone jouable pour le solaire.",
+                3000,
+            );
+            errorVibration();
+            return;
+        }
+
+        if (GameKind === "wind" && !isInsideWindBoundaries(clickedPosition)) {
+            console.error("Clicked position is outside wind boundaries");
+            pushToast(
+                "bad-score",
+                "Ce point est en dehors de la zone jouable pour l'éolien.",
+                3000,
+            );
+            errorVibration();
+            return;
+        }
+
         setCurrentPinPosition(clickedPosition);
         setLoading(true);
 
@@ -458,7 +513,8 @@ function Game({ children }: { children?: React.ReactNode }) {
                         Bienvenue dans le quiz ☺️
                     </h1>
                     <p className="text-sm md:text-base   text-black/60">
-                        Nous allons tester tes connaissances 🧠 en géographie 🗺️
+                        Nous allons tester ton instinct d'expert 🧠 en énergies
+                        renouvelables !☀️
                     </p>
 
                     <button
@@ -503,8 +559,9 @@ function Game({ children }: { children?: React.ReactNode }) {
                     <p className="text-sm md:text-base   text-black/60">
                         À trois reprises, le jeu va te présenter un endroit sur
                         Terre 🌏. Ton but ? <br /> <br />
-                        Deviner quel endroit est le plus intéressant pour poser
-                        une éolienne ou des panneaux solaires. 🫣 <br /> <br />
+                        Deviner quel endroit est le plus intéressant pour
+                        implanter un parc éolien ou installer des panneaux
+                        solaires. 🫣 <br /> <br />
                         Plus ta position est optimale, plus tu gagnes de points
                         🤗. À la fin, sauvegarde ton score et compare le avec
                         tes ami(e)s.
@@ -520,7 +577,7 @@ function Game({ children }: { children?: React.ReactNode }) {
                             )}
                             onClick={startClickedSolar}
                         >
-                            Commencer avec le soleil 🌞
+                            Explorer le solaire 🌞
                         </button>
                         <button
                             className={clsx(
@@ -531,7 +588,7 @@ function Game({ children }: { children?: React.ReactNode }) {
                             )}
                             onClick={startClickedWind}
                         >
-                            Commencer avec le vent 🌬️
+                            Explorer l'éolien' 🌬️
                         </button>
                     </div>
                 </div>
@@ -566,7 +623,17 @@ function Game({ children }: { children?: React.ReactNode }) {
                         Retour à l'accueil
                     </a>
                     <h1 className="text-lg md:text-2xl">
-                        T'es super doué(e)💪 <br /> Félicitations !
+                        {Score > 150 && (
+                            <>
+                                T'es super doué(e)💪 <br /> Félicitations !
+                            </>
+                        )}
+                        {Score <= 150 && (
+                            <>
+                                Pas mal du tout ! 👏 <br /> Mais je suis sûr que
+                                tu feras mieux la prochaine fois
+                            </>
+                        )}
                     </h1>
 
                     <p className="text-xs text-black/80 mt-8">Score final:</p>
@@ -588,16 +655,6 @@ function Game({ children }: { children?: React.ReactNode }) {
                         Bravo d'être arrivé jusqu'ici ! N'hésite pas à refaire
                         le quiz pour améliorer ton score, et surtout à le
                         partager à tes ami(e)s pour les défier 🏆
-                    </p>
-
-                    <p className="text-xs text-black/60 mt-4">
-                        À l'endroit où tu as cliqué au dernier round, le
-                        potentiel énergétique est de {LastValue.toFixed(2)}{" "}
-                        {GameKind === "solar" ? "kWh/m²/jour" : "m/s"}.
-                        L'endroit idéal à proximité était à{" "}
-                        {PerfectValue.toFixed(2)}{" "}
-                        {GameKind === "solar" ? "kWh/m²/jour" : "m/s"} (top{" "}
-                        {PercentileRank.toFixed(2)} %).
                     </p>
 
                     <button
