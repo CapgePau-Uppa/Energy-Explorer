@@ -64,11 +64,15 @@ wind_turbine = {
 
 DB_PATH = os.getenv("SIMULATOR_DB_PATH", "simulator.db")
 
+ELEC_BUY_PRICE = 0.1940   # €/kWh
+ELEC_SELL_PRICE = 0.04    # €/kWh
+
 simulator_schema = """
 CREATE TABLE IF NOT EXISTS project (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id TEXT NOT NULL,
     name TEXT NOT NULL,
+    daily_kwh_consumption REAL NOT NULL DEFAULT 16,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -103,6 +107,11 @@ def get_db():
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     conn.executescript(simulator_schema)
+    try:
+        conn.execute("ALTER TABLE project ADD COLUMN daily_kwh_consumption REAL NOT NULL DEFAULT 16")
+    except sqlite3.OperationalError:
+        pass  # column already exists
+    conn.execute("UPDATE project SET daily_kwh_consumption = 16 WHERE daily_kwh_consumption = 0")
     conn.commit()
     conn.close()
 
@@ -156,13 +165,14 @@ def list_projects():
 
     db = get_db()
     projects = db.execute(
-        "SELECT id, name, created_at FROM project WHERE user_id = ?", (user_id,)).fetchall()
+        "SELECT id, name, daily_kwh_consumption, created_at FROM project WHERE user_id = ?", (user_id,)).fetchall()
 
     data = []
     for project in projects:
         data.append({
             "id": project["id"],
             "name": project["name"],
+            "daily_kwh_consumption": project["daily_kwh_consumption"],
             "created_at": project["created_at"],
         })
     return jsonify(data)
@@ -179,15 +189,16 @@ def create_project():
     name = data.get("name", "").strip()
     if not name:
         return jsonify({"error": "name is required"}), 400
+    daily_kwh_consumption = float(data.get("daily_kwh_consumption", 16))
 
     db = get_db()
     cursor = db.execute(
-        "INSERT INTO project (user_id, name) VALUES (?, ?)",
-        (user_id, name)
+        "INSERT INTO project (user_id, name, daily_kwh_consumption) VALUES (?, ?, ?)",
+        (user_id, name, daily_kwh_consumption)
     )
     db.commit()
 
-    return jsonify({"id": cursor.lastrowid, "name": name}), 201
+    return jsonify({"id": cursor.lastrowid, "name": name, "daily_kwh_consumption": daily_kwh_consumption}), 201
 
 
 @simulator_bp.route("/project/<int:project_id>", methods=["GET"])
@@ -208,9 +219,44 @@ def get_project(project_id):
     return jsonify({
         "id": project["id"],
         "name": project["name"],
+        "daily_kwh_consumption": project["daily_kwh_consumption"],
         "created_at": project["created_at"],
         "solar_panels": [dict(p) for p in panels],
         "wind_turbines": [dict(t) for t in turbines],
+    })
+
+
+@simulator_bp.route("/project/<int:project_id>", methods=["PATCH"])
+def update_project(project_id):
+    db = get_db()
+    if db.execute("SELECT id FROM project WHERE id = ?", (project_id,)).fetchone() is None:
+        return jsonify({"error": "Project not found"}), 404
+
+    data = request.get_json(silent=True) or {}
+    fields, values = [], []
+    if "name" in data:
+        name = data["name"].strip()
+        if not name:
+            return jsonify({"error": "name cannot be empty"}), 400
+        fields.append("name = ?")
+        values.append(name)
+    if "daily_kwh_consumption" in data:
+        fields.append("daily_kwh_consumption = ?")
+        values.append(float(data["daily_kwh_consumption"]))
+
+    if not fields:
+        return jsonify({"error": "Nothing to update"}), 400
+
+    values.append(project_id)
+    db.execute(f"UPDATE project SET {', '.join(fields)} WHERE id = ?", values)
+    db.commit()
+
+    project = db.execute("SELECT * FROM project WHERE id = ?", (project_id,)).fetchone()
+    return jsonify({
+        "id": project["id"],
+        "name": project["name"],
+        "daily_kwh_consumption": project["daily_kwh_consumption"],
+        "created_at": project["created_at"],
     })
 
 
@@ -377,4 +423,69 @@ def estimate_project(project_id):
         "total_annual_kwh": round(total_annual_kwh, 2),
         "solar_panels": solar_details,
         "wind_turbines": wind_details,
+    })
+
+
+@simulator_bp.route("/project/<int:project_id>/viability", methods=["GET"])
+def viability_project(project_id):
+    db = get_db()
+    project = db.execute(
+        "SELECT * FROM project WHERE id = ?", (project_id,)).fetchone()
+    if project is None:
+        return jsonify({"error": "Project not found"}), 404
+
+    panels = db.execute(
+        "SELECT * FROM solar_panel WHERE project_id = ?", (project_id,)).fetchall()
+    turbines = db.execute(
+        "SELECT * FROM wind_turbine WHERE project_id = ?", (project_id,)).fetchall()
+
+    total_cost = 0.0
+    total_daily_kwh = 0.0
+
+    for panel in panels:
+        spec = solar[panel["panel_type"]]
+        row, col = dataset_solar.index(panel["longitude"], panel["latitude"])
+        irradiance = float(data_solar[row, col])
+        daily_kwh = panel["surface_area"] * (spec["yield"] / 100) * irradiance
+        num_units = panel["surface_area"] / spec["surface_area"]
+        total_daily_kwh += daily_kwh
+        total_cost += num_units * spec["cost"]
+
+    for turbine in turbines:
+        spec = wind_turbine[turbine["turbine_type"]]
+        row, col = dataset_wind.index(turbine["longitude"], turbine["latitude"])
+        v_mean = float(data_wind[row, col])
+        total_daily_kwh += _wind_daily_kwh(v_mean, spec["curve"]["speed"], spec["curve"]["power"])
+        total_cost += spec["cost"]
+
+    daily_consumption = project["daily_kwh_consumption"]
+    self_consumed = min(total_daily_kwh, daily_consumption)
+    excess = max(0.0, total_daily_kwh - daily_consumption)
+    deficit = max(0.0, daily_consumption - total_daily_kwh)
+
+    daily_savings = self_consumed * ELEC_BUY_PRICE + excess * ELEC_SELL_PRICE
+    annual_savings = daily_savings * 365
+    annual_grid_cost = deficit * ELEC_BUY_PRICE * 365
+
+    payback_years = round(total_cost / annual_savings, 1) if annual_savings > 0 else None
+
+    yearly_cumulative = []
+    for year in range(31):
+        yearly_cumulative.append({
+            "year": year,
+            "cumulative_eur": round(annual_savings * year - total_cost, 2),
+        })
+
+    return jsonify({
+        "total_cost": round(total_cost, 2),
+        "daily_production_kwh": round(total_daily_kwh, 3),
+        "daily_consumption_kwh": round(daily_consumption, 3),
+        "daily_self_consumption_kwh": round(self_consumed, 3),
+        "daily_resell_kwh": round(excess, 3),
+        "daily_deficit_kwh": round(deficit, 3),
+        "daily_savings_eur": round(daily_savings, 4),
+        "annual_savings_eur": round(annual_savings, 2),
+        "annual_grid_cost_eur": round(annual_grid_cost, 2),
+        "payback_years": payback_years,
+        "yearly_cumulative": yearly_cumulative,
     })
