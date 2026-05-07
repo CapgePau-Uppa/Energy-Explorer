@@ -53,9 +53,9 @@ function SimulatorEnergy({ children }: { children?: React.ReactNode }) {
     const [asideFolded, setAsideFolded] = useState(true);
     const [errorMessage, setError] = useState<string | null>(null);
 
-    const [placementMode, setPlacementMode] = useState<
-        "solar" | "wind" | null
-    >(null);
+    const [placementMode, setPlacementMode] = useState<"solar" | "wind" | null>(
+        null,
+    );
     const [pendingLatLng, setPendingLatLng] = useState<{
         lat: number;
         lng: number;
@@ -539,12 +539,29 @@ function SimulatorEnergy({ children }: { children?: React.ReactNode }) {
                 />
                 <h1 className="text-2xl font-bold mb-1">{Data.name}</h1>
 
-                <p className="text-xs text-black/50 mt-1">
-                    Ce simulateur ne fonctionne que pour la France
-                    métropolitaine pour l'instant. Il considère la consommation
-                    moyenne d'un foyer français (16 kWh par jour), le prix de
-                    revente à 0.04€/kWh, et le prix d'achat à 0.1940€/kWh.
-                </p>
+                <div className="bg-cyan-400/40 p-4 rounded-md mb-4">
+                    <div className="flex items-center gap-2">
+                        <svg
+                            width="24"
+                            height="24"
+                            viewBox="0 0 24 24"
+                            xmlns="http://www.w3.org/2000/svg"
+                        >
+                            <path
+                                fill="currentColor"
+                                d="M11 17h2v-6h-2zm1.713-8.287Q13 8.425 13 8t-.288-.712T12 7t-.712.288T11 8t.288.713T12 9t.713-.288M12 22q-2.075 0-3.9-.788t-3.175-2.137T2.788 15.9T2 12t.788-3.9t2.137-3.175T8.1 2.788T12 2t3.9.788t3.175 2.137T21.213 8.1T22 12t-.788 3.9t-2.137 3.175t-3.175 2.138T12 22m0-2q3.35 0 5.675-2.325T20 12t-2.325-5.675T12 4T6.325 6.325T4 12t2.325 5.675T12 20m0-8"
+                            />
+                        </svg>
+                        <p className="text-sm text-black/80">Infos pratiques</p>
+                    </div>
+                    <p className="text-xs text-black/60 mt-1">
+                        Ce simulateur ne fonctionne que pour la France
+                        métropolitaine pour l'instant. Il considère la
+                        consommation moyenne d'un foyer français (16 kWh par
+                        jour), le prix de revente à 0.04€/kWh, et le prix
+                        d'achat à 0.1940€/kWh (chiffres au 04/05/2026).
+                    </p>
+                </div>
                 <h2 className="text-xl font-semibold mt-4 mb-2">
                     Résumé du projet
                 </h2>
